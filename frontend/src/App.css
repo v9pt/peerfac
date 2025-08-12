@@ -1,38 +1,60 @@
-.App {
-    text-align: center;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --glass: rgba(255,255,255,0.06);
 }
 
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+.bg-grid {
+  background-color: #0c0d10;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0);
+  background-size: 24px 24px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.hero-gradient {
+  position: fixed;
+  inset: -40% -20% auto -20%;
+  height: 60vh;
+  background: radial-gradient(60% 60% at 50% 40%, rgba(56,189,248,0.25), transparent 60%),
+              radial-gradient(60% 60% at 30% 60%, rgba(16,185,129,0.25), transparent 60%),
+              radial-gradient(60% 60% at 70% 70%, rgba(244,63,94,0.25), transparent 60%);
+  filter: blur(40px);
+  z-index: 0;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.logo {
+  @apply w-9 h-9 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center text-white font-bold;
 }
 
-.App-link {
-    color: #61dafb;
+.glass {
+  @apply rounded-2xl border border-white/10 bg-white/5;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+.input {
+  @apply bg-transparent border border-white/15 rounded-xl px-3 py-2 text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-emerald-400/40;
+}
+
+.btn-primary {
+  @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold bg-emerald-500 text-white hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold bg-white/10 text-white hover:bg-white/20 disabled:opacity-60 disabled:cursor-not-allowed;
+}
+
+.icon-btn {
+  @apply w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center;
+}
+
+.chip {
+  @apply inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white/80 px-3 py-1;
+}
+
+.chip-active {
+  @apply border-emerald-400/60 bg-emerald-400/10 text-emerald-200;
+}
+
+.stat-chip {
+  @apply inline-flex items-center rounded-md bg-white/5 border border-white/10 px-2 py-1;
 }
