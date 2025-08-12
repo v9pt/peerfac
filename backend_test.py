@@ -10,7 +10,7 @@ import sys
 from typing import Dict, Any, Optional
 
 # Get backend URL from environment
-BACKEND_URL = "https://npm-dev-transition.preview.emergentagent.com/api"
+BACKEND_URL = "https://code-assist-5.preview.emergentagent.com/api"
 
 class PeerFactTester:
     def __init__(self):
