@@ -36,10 +36,10 @@ const ProfilePage = () => {
   };
 
   const recentActivity = [
-    { type: 'claim', text: 'Posted "New climate data shows...", 3 hours ago' },
-    { type: 'verification', text: 'Verified claim about renewable energy', '5 hours ago' },
-    { type: 'achievement', text: 'Reached 50 verifications milestone', '1 day ago' },
-    { type: 'verification', text: 'Refuted misinformation about vaccines', '2 days ago' },
+    { type: 'claim', text: 'Posted "New climate data shows..."', time: '3 hours ago' },
+    { type: 'verification', text: 'Verified claim about renewable energy', time: '5 hours ago' },
+    { type: 'achievement', text: 'Reached 50 verifications milestone', time: '1 day ago' },
+    { type: 'verification', text: 'Refuted misinformation about vaccines', time: '2 days ago' },
   ];
 
   return (
