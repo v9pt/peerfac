@@ -101,3 +101,159 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## user_problem_statement: Build PeerFact – Reddit-style decentralized fact-checking platform (MVP with claims, verifications, AI-assisted summary, reputation-weighted verdicts)
+
+## backend:
+  - task: "Health root api"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "GET /api returns PeerFact API is live"
+  - task: "Create/Read status checks"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "POST /api/status and GET /api/status"
+  - task: "User bootstrap"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "POST /api/users/bootstrap creates anon user with uuid"
+  - task: "Create claim with AI analysis"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "POST /api/claims stores claim; AI via emergentintegrations if EMERGENT_LLM_KEY present else heuristic"
+  - task: "List claims with computed verdict snapshot"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "GET /api/claims returns list enriched with support/refute/unclear counts and confidence"
+  - task: "Get claim detail + verifications + verdict"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "GET /api/claims/{id} returns claim, verifications, verdict"
+  - task: "Add verification and update reputation lightly"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "POST /api/claims/{id}/verify records stance, adjusts user reputation slightly against majority"
+  - task: "Get verdict for claim"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "GET /api/claims/{id}/verdict returns weighted verdict"
+  - task: "Analyze claim endpoint"
+    implemented: true
+    working: NA
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "POST /api/analyze/claim tries AI then heuristic"
+
+## frontend:
+  - task: "Bootstrap user in local storage"
+    implemented: true
+    working: NA
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "POST /api/users/bootstrap and store in localStorage"
+  - task: "Create claim UI with analyze"
+    implemented: true
+    working: NA
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "Form posts to /api/claims and refreshes feed"
+  - task: "List and open claim detail with verifications"
+    implemented: true
+    working: NA
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: NA
+        agent: "main"
+        comment: "Displays cards and modal with verdict and evidence; add verification"
+
+## metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: false
+
+## test_plan:
+  current_focus:
+    - "Backend API happy paths"
+    - "Validation errors (missing author, missing claim)"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+## agent_communication:
+  - agent: "main"
+    message: "Implemented core PeerFact MVP backend and UI. Please start by testing backend endpoints (under /api). Frontend testing to be confirmed by user." 
