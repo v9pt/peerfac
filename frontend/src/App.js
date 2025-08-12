@@ -125,7 +125,6 @@ function ClaimDetail({ claim, user, onClose, refresh }) {
 
   useEffect(() => {
     fetchDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claim.id]);
 
   return (
