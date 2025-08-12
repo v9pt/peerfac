@@ -233,6 +233,50 @@
         comment: "✅ TESTED: POST /api/analyze/claim returns JSON with summary and label fields, heuristic analysis working (detected 'official confirmed' as 'Likely True')"
 
 ## frontend:
+  - task: "Migrate from CRACO to Vite"
+    implemented: true
+    working: true
+    file: "/app/frontend/vite.config.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Successfully migrated from CRACO to Vite 6.3.5, updated package.json scripts, created vite.config.js with JSX support and path aliases"
+  - task: "Remove Emergent branding and analytics"
+    implemented: true
+    working: true
+    file: "/app/frontend/index.html"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Removed all Emergent badges, PostHog analytics, and replaced with generic PeerFact branding"
+  - task: "Setup VSCode development environment"
+    implemented: true
+    working: true
+    file: "/app/.vscode/"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Created VSCode settings, launch configs, tasks for full-stack development, added comprehensive README"
+  - task: "Update environment variables for Vite"
+    implemented: true
+    working: true
+    file: "/app/frontend/.env"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Converted REACT_APP_ to VITE_ environment variables, updated backend URL for local development"
   - task: "Bootstrap user in local storage"
     implemented: true
     working: NA
