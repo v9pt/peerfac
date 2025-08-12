@@ -13,7 +13,6 @@ function useLocalUser() {
       setUser(JSON.parse(existing));
       return;
     }
-    // bootstrap a user
     axios
       .post(`${API}/users/bootstrap`, { username: null })
       .then((res) => {
@@ -233,10 +232,144 @@ function AddVerification({ claimId, user, onAdded }) {
   );
 }
 
+function Leaderboard() {
+  const [users, setUsers] = useState([]);
+  const [sources, setSources] = useState([]);
+
+  useEffect(() => {
+    (async () => {
+      const u = await axios.get(`${API}/leaderboard/users`);
+      setUsers(u.data || []);
+      const s = await axios.get(`${API}/leaderboard/sources`);
+      setSources(s.data || []);
+    })();
+  }, []);
+
+  return (
+    <div className="grid md:grid-cols-2 gap-4">
+      <div className="glass p-5">
+        <div className="text-white font-semibold mb-3">Top Verifiers</div>
+        <div className="space-y-2">
+          {users.map((r, i) => (
+            <div key={r.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="flex items-center gap-3">
+                <div className="rank">#{i + 1}</div>
+                <div>
+                  <div className="text-white/90 font-medium">{r.username}</div>
+                  <div className="text-white/60 text-xs">Rep {r.reputation} · {Math.round((r.accuracy || 0) * 100)}% acc · {r.verifications} verifs</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="glass p-5">
+        <div className="text-white font-semibold mb-3">Reliable Sources (by alignment)</div>
+        <div className="space-y-2">
+          {sources.map((s, i) => (
+            <div key={s.domain} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="flex items-center gap-3">
+                <div className="rank">#{i + 1}</div>
+                <div>
+                  <div className="text-white/90 font-medium">{s.domain}</div>
+                  <div className="text-white/60 text-xs">{Math.round((s.reliability || 0) * 100)}% reliability · {s.samples} samples</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Payments() {
+  const [status, setStatus] = useState("");
+
+  const pkgs = [
+    { id: "starter", name: "Starter", price: "$5" },
+    { id: "pro", name: "Pro", price: "$15" },
+    { id: "donation", name: "Donation", price: "$3" },
+  ];
+
+  const startCheckout = async (pkg) => {
+    try {
+      setStatus("Redirecting to Stripe...");
+      const res = await axios.post(`${API}/payments/v1/checkout/session`, {
+        package_id: pkg.id,
+        origin_url: window.location.origin,
+      });
+      if (res.data?.url) window.location.href = res.data.url;
+    } catch (e) {
+      setStatus(e?.response?.data?.detail || "Payment init failed");
+    }
+  };
+
+  // Polling when returning from Stripe
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const sid = url.searchParams.get("session_id");
+    if (!sid) return;
+    setStatus("Checking payment status...");
+
+    let attempts = 0;
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const r = await axios.get(`${API}/payments/v1/checkout/status/${sid}`);
+        const d = r.data;
+        if (d.payment_status === "paid") {
+          setStatus("Payment successful! Thank you.");
+          return;
+        }
+        if (d.status === "expired") {
+          setStatus("Payment session expired. Please try again.");
+          return;
+        }
+        if (attempts < 7) setTimeout(poll, 2000);
+      } catch (err) {
+        if (attempts < 7) setTimeout(poll, 2000);
+      }
+    };
+    poll();
+  }, []);
+
+  return (
+    <div className="grid md:grid-cols-3 gap-4">
+      {pkgs.map((p) => (
+        <div key={p.id} className="glass p-5 flex flex-col items-start">
+          <div className="text-white font-semibold">{p.name}</div>
+          <div className="text-white/60 text-sm">{p.price}</div>
+          <button className="btn-primary mt-3" onClick={() => startCheckout(p)}>Buy</button>
+        </div>
+      ))}
+      {status && <div className="md:col-span-3 text-white/80">{status}</div>}
+    </div>
+  );
+}
+
+function Nav({ current, onSwitch }) {
+  const tabs = [
+    { k: "feed", label: "Feed" },
+    { k: "leaderboard", label: "Leaderboard" },
+    { k: "payments", label: "Payments" },
+  ];
+  return (
+    <div className="flex items-center gap-2">
+      {tabs.map((t) => (
+        <button key={t.k} className={`tab ${current === t.k ? "tab-active" : ""}`} onClick={() => onSwitch(t.k)}>
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function App() {
   const user = useLocalUser();
   const [claims, setClaims] = useState([]);
   const [open, setOpen] = useState(null);
+  const [tab, setTab] = useState("feed");
 
   const fetchClaims = async () => {
     const res = await axios.get(`${API}/claims`);
@@ -258,20 +391,28 @@ function App() {
             <div className="text-white/60 text-xs">Crowdsourced, reputation-weighted fact checking</div>
           </div>
         </div>
-        <div className="text-white/70 text-sm">{user ? `Hi, ${user.username}` : "Bootstrapping..."}</div>
+        <div className="flex items-center gap-6">
+          <Nav current={tab} onSwitch={setTab} />
+          <div className="text-white/70 text-sm">{user ? `Hi, ${user.username}` : "Bootstrapping..."}</div>
+        </div>
       </header>
 
       <main className="container mx-auto px-4 pb-20 space-y-6">
-        <NewClaim user={user} onCreated={() => fetchClaims()} />
-
-        <div className="grid md:grid-cols-2 gap-4">
-          {claims.map((c) => (
-            <ClaimCard key={c.id} item={c} onOpen={() => setOpen(c)} />)
-          )}
-        </div>
+        {tab === "feed" && (
+          <>
+            <NewClaim user={user} onCreated={() => fetchClaims()} />
+            <div className="grid md:grid-cols-2 gap-4">
+              {claims.map((c) => (
+                <ClaimCard key={c.id} item={c} onOpen={() => setOpen(c)} />)
+              )}
+            </div>
+          </>
+        )}
+        {tab === "leaderboard" && <Leaderboard />}
+        {tab === "payments" && <Payments />}
       </main>
 
-      <footer className="py-10 text-center text-white/50 text-sm">Built for impact · Polygon &amp; advanced AI coming soon</footer>
+      <footer className="py-10 text-center text-white/50 text-sm">Built for impact · Polygon &amp; advanced AI coming next</footer>
 
       {open && <ClaimDetail claim={open} user={user} onClose={() => setOpen(null)} refresh={fetchClaims} />}
     </div>
