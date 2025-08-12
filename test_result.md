@@ -102,7 +102,7 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-## user_problem_statement: Build PeerFact – Reddit-style decentralized fact-checking platform (MVP with claims, verifications, AI-assisted summary, reputation-weighted verdicts)
+## user_problem_statement: Help me switch from craco to npm run dev and everything is supposed to be the latest version. Make the repository in such a way that does not show this app was made by emergent and also in such a way that i can run the repository on vscode easily.
 
 ## backend:
   - task: "Health root api"
