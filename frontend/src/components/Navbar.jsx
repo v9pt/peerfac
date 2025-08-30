@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bars3Icon, BellIcon, PlusIcon, UserCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, BellIcon, PlusIcon, UserCircleIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { useApp } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
   const { user, sidebarOpen, setSidebarOpen, theme } = useApp();
