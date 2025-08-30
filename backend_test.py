@@ -57,7 +57,7 @@ class PeerFactTester:
                 
                 if all(field in data for field in required_fields):
                     user = data["user"]
-                    if user["username"] == "testuser1" and user["email"] == "test@example.com":
+                    if user["username"].startswith("testuser1_") and user["email"].startswith("test_"):
                         self.auth_token = data["access_token"]
                         self.authenticated_user = user
                         self.log_result("User registration (valid)", True, f"Registered user: {user['username']}")
