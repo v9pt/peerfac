@@ -43,7 +43,7 @@ The backend API will be available at `http://localhost:8001`
    
    # Install backend dependencies
    cd ../backend
-   pip install -r requirements.txt
+   pip install -r requirements.txt --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
    ```
 
 2. **Environment Configuration**:
