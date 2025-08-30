@@ -8,7 +8,8 @@ import axios from 'axios';
 
 const CreateClaimPage = () => {
   const navigate = useNavigate();
-  const { user, API, theme, fetchClaims } = useApp();
+  const { API, theme, fetchClaims } = useApp();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     text: '',
     link: '',
