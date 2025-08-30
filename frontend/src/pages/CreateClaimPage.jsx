@@ -296,10 +296,15 @@ const CreateClaimPage = () => {
             <div className={`p-6 rounded-xl border ${
               theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
             }`}>
-              <h3 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                AI Analysis Preview
-              </h3>
-              <div className="space-y-3">
+              <div className="flex items-center space-x-2 mb-4">
+                <SparklesIcon className="w-5 h-5 text-purple-500" />
+                <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  AI Analysis Preview
+                </h3>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Summary */}
                 <div>
                   <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                     Summary:
@@ -308,20 +313,155 @@ const CreateClaimPage = () => {
                     {aiPreview.summary}
                   </p>
                 </div>
-                <div>
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Initial Assessment:
-                  </p>
-                  <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${
-                    aiPreview.label?.toLowerCase().includes('true') 
-                      ? 'bg-green-100 text-green-800'
-                      : aiPreview.label?.toLowerCase().includes('false')
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {aiPreview.label}
-                  </span>
+
+                {/* Assessment & Confidence */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Assessment:
+                    </p>
+                    <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${
+                      aiPreview.label?.toLowerCase().includes('true') 
+                        ? 'bg-green-100 text-green-800'
+                        : aiPreview.label?.toLowerCase().includes('false')
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {aiPreview.label}
+                    </span>
+                  </div>
+                  
+                  <div>
+                    <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Confidence:
+                    </p>
+                    <div className="mt-1">
+                      <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'}`}>
+                        <div 
+                          className="h-full bg-blue-500 rounded-full"
+                          style={{ width: `${Math.round((aiPreview.confidence || 0) * 100)}%` }}
+                        />
+                      </div>
+                      <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {Math.round((aiPreview.confidence || 0) * 100)}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Evidence Quality & Bias */}
+                {aiPreview.evidence_quality && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                        Evidence:
+                      </p>
+                      <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${
+                        aiPreview.evidence_quality === 'high' ? 'bg-green-100 text-green-800' :
+                        aiPreview.evidence_quality === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {aiPreview.evidence_quality.toUpperCase()}
+                      </span>
+                    </div>
+                    
+                    {aiPreview.bias_score !== undefined && (
+                      <div>
+                        <p className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                          Bias:
+                        </p>
+                        <span className={`inline-block mt-1 px-2 py-1 rounded text-xs font-medium ${
+                          aiPreview.bias_score < 0.3 ? 'bg-green-100 text-green-800' :
+                          aiPreview.bias_score < 0.7 ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {aiPreview.bias_score < 0.3 ? 'LOW' : aiPreview.bias_score < 0.7 ? 'MEDIUM' : 'HIGH'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Key Entities */}
+                {aiPreview.entities && aiPreview.entities.length > 0 && (
+                  <div>
+                    <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Key Entities:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {aiPreview.entities.slice(0, 4).map((entity, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs"
+                        >
+                          {entity.text}
+                        </span>
+                      ))}
+                      {aiPreview.entities.length > 4 && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                          +{aiPreview.entities.length - 4} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Red Flags */}
+                {aiPreview.contradiction_flags && aiPreview.contradiction_flags.length > 0 && (
+                  <div>
+                    <p className={`text-sm font-medium text-red-600 mb-2`}>
+                      ⚠️ Potential Issues:
+                    </p>
+                    <div className="space-y-1">
+                      {aiPreview.contradiction_flags.slice(0, 2).map((flag, index) => (
+                        <div key={index} className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                          {flag}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Source Analysis */}
+                {aiPreview.sources_analysis && aiPreview.sources_analysis.length > 0 && (
+                  <div>
+                    <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      Source Analysis:
+                    </p>
+                    {aiPreview.sources_analysis[0] && (
+                      <div className={`p-2 rounded text-xs ${
+                        theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
+                      }`}>
+                        <div className="flex justify-between items-center">
+                          <span className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {aiPreview.sources_analysis[0].domain}
+                          </span>
+                          <span className={`px-2 py-1 rounded ${
+                            aiPreview.sources_analysis[0].credibility_score >= 0.8 
+                              ? 'bg-green-100 text-green-800' 
+                              : aiPreview.sources_analysis[0].credibility_score >= 0.6 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {Math.round(aiPreview.sources_analysis[0].credibility_score * 100)}% credible
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Top Verification Suggestion */}
+                {aiPreview.verification_suggestions && aiPreview.verification_suggestions.length > 0 && (
+                  <div>
+                    <p className={`text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                      💡 Suggestion:
+                    </p>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-blue-300' : 'text-blue-600'} bg-blue-50 p-2 rounded`}>
+                      {aiPreview.verification_suggestions[0]}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
