@@ -5,9 +5,19 @@ import { useApp } from '../App';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
-  const { user, sidebarOpen, setSidebarOpen, theme } = useApp();
+  const { sidebarOpen, setSidebarOpen, theme } = useApp();
+  const { user, isAuthenticated, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    setShowUserMenu(false);
+  };
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b backdrop-blur-sm bg-opacity-95`}>
