@@ -626,7 +626,7 @@ async def add_verification(claim_id: str, body: VerificationCreate, current_user
     doc = {
         "id": str(uuid.uuid4()),
         "claim_id": claim_id,
-        "author_id": body.author_id,
+        "author_id": author_id,
         "stance": body.stance,
         "source_url": body.source_url,
         "explanation": body.explanation,
