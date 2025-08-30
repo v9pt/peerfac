@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import axios from 'axios';
 import './App.css';
 
+// Import Contexts
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+
 // Import Pages
 import HomePage from './pages/HomePage';
 import ExplorePage from './pages/ExplorePage';
@@ -12,11 +15,14 @@ import CreateClaimPage from './pages/CreateClaimPage';
 import ClaimDetailPage from './pages/ClaimDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import AboutPage from './pages/AboutPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
 // Import Components
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import LoadingSpinner from './components/LoadingSpinner';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Context
 const AppContext = createContext();
