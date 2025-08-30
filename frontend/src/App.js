@@ -116,14 +116,52 @@ function AppContent() {
             <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'} pt-16`}>
               <div className="container mx-auto px-4 py-6 max-w-7xl">
                 <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/explore" element={<ExplorePage />} />
-                  <Route path="/leaderboard" element={<LeaderboardPage />} />
-                  <Route path="/profile/:userId?" element={<ProfilePage />} />
-                  <Route path="/create" element={<CreateClaimPage />} />
-                  <Route path="/claim/:claimId" element={<ClaimDetailPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/about" element={<AboutPage />} />
+                  {/* Public routes */}
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
+                  
+                  {/* Protected routes - accessible with or without auth */}
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <HomePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/explore" element={
+                    <ProtectedRoute>
+                      <ExplorePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/leaderboard" element={
+                    <ProtectedRoute>
+                      <LeaderboardPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile/:userId?" element={
+                    <ProtectedRoute>
+                      <ProfilePage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/create" element={
+                    <ProtectedRoute>
+                      <CreateClaimPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/claim/:claimId" element={
+                    <ProtectedRoute>
+                      <ClaimDetailPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings" element={
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/about" element={
+                    <ProtectedRoute>
+                      <AboutPage />
+                    </ProtectedRoute>
+                  } />
+                  
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>
