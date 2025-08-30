@@ -639,9 +639,9 @@ async def add_verification(claim_id: str, body: VerificationCreate, current_user
     align_map = {"Mostly True": "support", "Mostly False": "refute", "Unclear": "unclear"}
     align_key = align_map.get(current.get("label", "Unclear"), "unclear")
     if body.stance == align_key:
-        await db.users.update_one({"id": body.author_id}, {"$inc": {"reputation": 0.1}})
+        await db.users.update_one({"id": author_id}, {"$inc": {"reputation": 0.1}})
     else:
-        await db.users.update_one({"id": body.author_id}, {"$inc": {"reputation": -0.05}})
+        await db.users.update_one({"id": author_id}, {"$inc": {"reputation": -0.05}})
 
     return VerificationModel(**clean_doc(doc))
 
