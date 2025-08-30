@@ -152,6 +152,84 @@ class CreateCheckoutRequest(BaseModel):
 
 
 # --------------------------------------
+# Authentication Utilities
+# --------------------------------------
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def validate_password(password: str) -> tuple[bool, str]:
+    """Validate password strength"""
+    if len(password) < 6:
+        return False, "Password must be at least 6 characters long"
+    if len(password) > 128:
+        return False, "Password must be less than 128 characters"
+    if not re.search(r"[A-Za-z]", password):
+        return False, "Password must contain at least one letter"
+    if not re.search(r"[0-9]", password):
+        return False, "Password must contain at least one number"
+    return True, "Valid password"
+
+
+def validate_username(username: str) -> tuple[bool, str]:
+    """Validate username format"""
+    if len(username) < 3:
+        return False, "Username must be at least 3 characters long"
+    if len(username) > 50:
+        return False, "Username must be less than 50 characters"
+    if not re.match(r"^[a-zA-Z0-9_-]+$", username):
+        return False, "Username can only contain letters, numbers, hyphens, and underscores"
+    return True, "Valid username"
+
+
+async def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[Dict[str, Any]]:
+    """Get current user from JWT token - returns None if no token or invalid token"""
+    if not credentials:
+        return None
+    
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            return None
+        token_data = TokenData(user_id=user_id)
+    except JWTError:
+        return None
+    
+    user = await get_user(token_data.user_id)
+    if user is None:
+        return None
+    return user
+
+
+async def get_current_active_user(current_user: Optional[Dict[str, Any]] = Depends(get_current_user)) -> Dict[str, Any]:
+    """Get current user - requires authentication"""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return current_user
+
+
+# --------------------------------------
 # Utilities
 # --------------------------------------
 async def get_user(user_id: str) -> Optional[Dict[str, Any]]:
