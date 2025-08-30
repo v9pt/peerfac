@@ -197,7 +197,7 @@ class PeerFactTester:
                 
                 if all(field in data for field in required_fields):
                     user = data["user"]
-                    if user["email"] == "test@example.com":
+                    if user["email"] == self.authenticated_user["email"]:
                         # Update token for subsequent tests
                         self.auth_token = data["access_token"]
                         self.authenticated_user = user
