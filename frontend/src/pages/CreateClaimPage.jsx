@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, PhotoIcon, LinkIcon, TagIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useApp } from '../App';
+import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 import axios from 'axios';
 
