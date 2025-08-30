@@ -96,7 +96,7 @@ function AppContent() {
     setSidebarOpen,
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <LoadingSpinner />
