@@ -610,12 +610,18 @@ async def get_claim(claim_id: str):
 
 
 @api_router.post("/claims/{claim_id}/verify", response_model=VerificationModel)
-async def add_verification(claim_id: str, body: VerificationCreate):
+async def add_verification(claim_id: str, body: VerificationCreate, current_user: Optional[dict] = Depends(get_current_user)):
     claim = await db.claims.find_one({"id": claim_id})
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
-    if not await get_user(body.author_id):
-        raise HTTPException(status_code=400, detail="Invalid author_id")
+    
+    # If user is authenticated, use their ID, otherwise validate the provided author_id
+    if current_user:
+        author_id = current_user["id"]
+    else:
+        if not await get_user(body.author_id):
+            raise HTTPException(status_code=400, detail="Invalid author_id")
+        author_id = body.author_id
 
     doc = {
         "id": str(uuid.uuid4()),
