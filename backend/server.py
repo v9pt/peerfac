@@ -142,49 +142,116 @@ async def compute_verdict(claim_id: str) -> Dict[str, Any]:
     }
 
 
-async def try_ai_analyze(text: str) -> Dict[str, str]:
-    """Use emergentintegrations LLM with provider key preference: OPENAI_API_KEY > EMERGENT_LLM_KEY. Fallback to heuristic."""
-    api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY")
-    if api_key:
-        try:
-            from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
-            chat = LlmChat(
-                api_key=api_key,
-                session_id=f"peerfact-{uuid.uuid4()}",
-                system_message=(
-                    "You are a concise fact-checking assistant. Summarize the claim in one sentence "
-                    "and classify it as Likely True / Likely False / Unclear without overclaiming. "
-                    "Respond in JSON with keys: summary, label."
-                ),
-            )
-            chat = chat.with_model("openai", "gpt-4o-mini")
-            user_message = UserMessage(text=f"Claim: {text}\nReturn compact JSON only.")
-            result = await chat.send_message(user_message)
-            import json
+async def try_ai_analyze(text: str, link: Optional[str] = None) -> Dict[str, Any]:
+    """Enhanced AI analysis using the advanced AI engine"""
+    try:
+        from advanced_ai_engine import ai_engine
+        
+        # Use the comprehensive analysis from our advanced AI engine
+        result = await ai_engine.comprehensive_analysis(text, link)
+        
+        # Convert to the expected format for backward compatibility
+        return {
+            "summary": result.summary,
+            "label": result.label,
+            "confidence": result.confidence,
+            "reasoning": result.reasoning,
+            "entities": result.entities,
+            "bias_score": result.bias_score,
+            "stance": result.stance,
+            "evidence_quality": result.evidence_quality,
+            "temporal_relevance": result.temporal_relevance,
+            "contradiction_flags": result.contradiction_flags,
+            "verification_suggestions": result.verification_suggestions,
+            "sources_analysis": result.sources_analysis
+        }
+        
+    except Exception as e:
+        logging.error(f"Advanced AI analysis failed: {e}")
+        
+        # Fallback to basic analysis
+        api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY")
+        if api_key:
             try:
-                data = json.loads(result)
-                summary = str(data.get("summary") or "")
-                label = str(data.get("label") or "Unclear")
-            except Exception:
-                summary = str(result)[:300]
-                label = "Unclear"
-            return {"summary": summary, "label": label}
-        except Exception:
-            pass
+                from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+                chat = LlmChat(
+                    api_key=api_key,
+                    session_id=f"peerfact-{uuid.uuid4()}",
+                    system_message=(
+                        "You are an advanced fact-checking assistant. Analyze the claim comprehensively "
+                        "and classify it with high accuracy. Consider context, verifiability, and nuance. "
+                        "Respond in JSON with keys: summary, label, reasoning, confidence (0-1)."
+                    ),
+                )
+                chat = chat.with_model("openai", "gpt-4o-mini")
+                user_message = UserMessage(text=f"Claim: {text}\nSource URL: {link or 'None'}\nReturn detailed JSON analysis.")
+                result = await chat.send_message(user_message)
+                
+                import json
+                try:
+                    data = json.loads(result)
+                    return {
+                        "summary": str(data.get("summary") or ""),
+                        "label": str(data.get("label") or "Unclear"),
+                        "confidence": float(data.get("confidence", 0.5)),
+                        "reasoning": str(data.get("reasoning", "")),
+                        "entities": [],
+                        "bias_score": 0.5,
+                        "stance": "neutral",
+                        "evidence_quality": "medium",
+                        "temporal_relevance": 0.5,
+                        "contradiction_flags": [],
+                        "verification_suggestions": [],
+                        "sources_analysis": []
+                    }
+                except Exception:
+                    summary = str(result)[:300] if result else text[:240] + "..."
+                    return {
+                        "summary": summary,
+                        "label": "Unclear", 
+                        "confidence": 0.3,
+                        "reasoning": "Basic analysis due to parsing error",
+                        "entities": [],
+                        "bias_score": 0.5,
+                        "stance": "neutral", 
+                        "evidence_quality": "medium",
+                        "temporal_relevance": 0.5,
+                        "contradiction_flags": [],
+                        "verification_suggestions": [],
+                        "sources_analysis": []
+                    }
+            except Exception as inner_e:
+                logging.error(f"Fallback AI analysis also failed: {inner_e}")
+                pass
 
-    # Heuristic fallback
-    snippet = text.strip().replace("\n", " ")
-    summary = (snippet[:240] + "…") if len(snippet) > 240 else snippet
-    lowered = text.lower()
-    if any(k in lowered for k in ["satire", "parody"]):
-        label = "Unclear"
-    elif any(k in lowered for k in ["fake", "hoax", "debunk"]):
-        label = "Likely False"
-    elif any(k in lowered for k in ["official", "press release", "confirmed"]):
-        label = "Likely True"
-    else:
-        label = "Unclear"
-    return {"summary": summary, "label": label}
+        # Final heuristic fallback
+        snippet = text.strip().replace("\n", " ")
+        summary = (snippet[:240] + "…") if len(snippet) > 240 else snippet
+        lowered = text.lower()
+        
+        if any(k in lowered for k in ["satire", "parody"]):
+            label = "Satire/Humor"
+        elif any(k in lowered for k in ["fake", "hoax", "debunk"]):
+            label = "Likely False"
+        elif any(k in lowered for k in ["official", "press release", "confirmed"]):
+            label = "Likely True"
+        else:
+            label = "Unclear"
+            
+        return {
+            "summary": summary,
+            "label": label,
+            "confidence": 0.2,
+            "reasoning": "Heuristic analysis - manual verification recommended",
+            "entities": [],
+            "bias_score": 0.5,
+            "stance": "neutral",
+            "evidence_quality": "unknown",
+            "temporal_relevance": 0.5,
+            "contradiction_flags": [],
+            "verification_suggestions": ["Manual fact-checking required"],
+            "sources_analysis": []
+        }
 
 
 def clean_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
