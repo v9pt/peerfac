@@ -42,9 +42,11 @@ class PeerFactTester:
     def test_user_registration_valid(self):
         """Test 1: POST /api/auth/register with valid data"""
         try:
+            import time
+            timestamp = str(int(time.time()))
             payload = {
-                "username": "testuser1",
-                "email": "test@example.com", 
+                "username": f"testuser1_{timestamp}",
+                "email": f"test_{timestamp}@example.com", 
                 "password": "password123"
             }
             response = self.session.post(f"{self.base_url}/auth/register", json=payload)
