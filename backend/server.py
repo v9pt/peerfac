@@ -416,12 +416,116 @@ async def get_status_checks():
     return [StatusCheck(**s) for s in status_checks]
 
 
+# --------------------------------------
+# Routes: Authentication
+# --------------------------------------
+@api_router.post("/auth/register", response_model=dict)
+async def register_user(user: UserRegister):
+    # Validate password strength
+    password_valid, password_msg = validate_password(user.password)
+    if not password_valid:
+        raise HTTPException(status_code=400, detail=password_msg)
+    
+    # Validate username format
+    username_valid, username_msg = validate_username(user.username)
+    if not username_valid:
+        raise HTTPException(status_code=400, detail=username_msg)
+    
+    # Check if email already exists
+    existing_user = await db.users.find_one({"email": user.email.lower()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if username already exists
+    existing_username = await db.users.find_one({"username": user.username})
+    if existing_username:
+        raise HTTPException(status_code=400, detail="Username already taken")
+    
+    # Create new user
+    hashed_password = get_password_hash(user.password)
+    user_data = {
+        "id": str(uuid.uuid4()),
+        "username": user.username,
+        "email": user.email.lower(),
+        "password_hash": hashed_password,
+        "is_anonymous": False,
+        "reputation": 1.0,
+        "created_at": datetime.utcnow(),
+        "last_login": None,
+    }
+    
+    await db.users.insert_one(user_data)
+    
+    # Create access token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_data["id"]}, expires_delta=access_token_expires
+    )
+    
+    # Update last login
+    await db.users.update_one(
+        {"id": user_data["id"]}, 
+        {"$set": {"last_login": datetime.utcnow()}}
+    )
+    
+    return {
+        "message": "User registered successfully",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": UserModel(**clean_doc(user_data))
+    }
+
+
+@api_router.post("/auth/login", response_model=dict)
+async def login_user(user_credentials: UserLogin):
+    # Find user by email
+    user = await db.users.find_one({"email": user_credentials.email.lower()})
+    if not user or not verify_password(user_credentials.password, user.get("password_hash", "")):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Create access token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user["id"]}, expires_delta=access_token_expires
+    )
+    
+    # Update last login
+    await db.users.update_one(
+        {"id": user["id"]}, 
+        {"$set": {"last_login": datetime.utcnow()}}
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": UserModel(**clean_doc(user))
+    }
+
+
+@api_router.get("/auth/me", response_model=UserModel)
+async def get_current_user_info(current_user: dict = Depends(get_current_active_user)):
+    return UserModel(**current_user)
+
+
+@api_router.post("/auth/logout")
+async def logout_user(current_user: dict = Depends(get_current_active_user)):
+    # In a real implementation, you might want to blacklist the token
+    # For now, we'll just return a success message
+    return {"message": "Successfully logged out"}
+
+
 @api_router.post("/users/bootstrap", response_model=UserModel)
 async def users_bootstrap(body: UserCreate):
+    """Create anonymous user - kept for backward compatibility"""
     username = body.username or f"anon-{str(uuid.uuid4())[:8]}"
     user = {
         "id": str(uuid.uuid4()),
         "username": username,
+        "is_anonymous": True,
         "reputation": 1.0,
         "created_at": datetime.utcnow(),
     }
