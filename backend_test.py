@@ -19,6 +19,8 @@ class PeerFactTester:
         self.test_users = []
         self.test_claims = []
         self.results = []
+        self.auth_token = None
+        self.authenticated_user = None
         
     def log_result(self, test_name: str, success: bool, details: str = "", response_data: Any = None):
         """Log test result"""
