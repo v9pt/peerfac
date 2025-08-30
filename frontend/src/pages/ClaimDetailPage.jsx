@@ -29,6 +29,7 @@ const ClaimDetailPage = () => {
   const [claim, setClaim] = useState(null);
   const [verifications, setVerifications] = useState([]);
   const [verdict, setVerdict] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
