@@ -55,11 +55,43 @@ class UserCreate(BaseModel):
     username: Optional[str] = None
 
 
+class UserRegister(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
 class UserModel(BaseModel):
     id: str
     username: str
+    email: Optional[str] = None
+    is_anonymous: bool = False
     reputation: float = 1.0
     created_at: datetime
+    last_login: Optional[datetime] = None
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    user_id: Optional[str] = None
+
+
+class PasswordReset(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=6)
 
 
 class ClaimCreate(BaseModel):
