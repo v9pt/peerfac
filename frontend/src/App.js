@@ -173,4 +173,17 @@ function AppContent() {
   );
 }
 
+}
+
+// Main App component with Auth Provider
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
+  );
+}
+
 export default App;
