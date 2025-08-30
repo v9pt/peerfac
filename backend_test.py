@@ -220,9 +220,13 @@ class PeerFactTester:
 
     def test_user_login_invalid(self):
         """Test 6: POST /api/auth/login with invalid credentials"""
+        if not self.authenticated_user:
+            self.log_result("User login invalid", False, "No authenticated user from registration test")
+            return False
+            
         test_cases = [
             {"email": "wrong@example.com", "password": "password123"},
-            {"email": "test@example.com", "password": "wrongpassword"}
+            {"email": self.authenticated_user["email"], "password": "wrongpassword"}
         ]
         
         all_passed = True
