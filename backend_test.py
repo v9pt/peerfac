@@ -266,7 +266,7 @@ class PeerFactTester:
                 required_fields = ["id", "username", "email", "is_anonymous", "reputation"]
                 
                 if all(field in data for field in required_fields):
-                    if data["username"] == "testuser1" and data["email"] == "test@example.com":
+                    if data["username"] == self.authenticated_user["username"] and data["email"] == self.authenticated_user["email"]:
                         self.log_result("Auth me endpoint", True, f"Retrieved user info: {data['username']}")
                         return True
                     else:
