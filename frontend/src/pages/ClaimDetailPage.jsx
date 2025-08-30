@@ -10,7 +10,12 @@ import {
   ChatBubbleLeftIcon,
   LinkIcon,
   CalendarIcon,
-  UserIcon
+  UserIcon,
+  BeakerIcon,
+  ExclamationTriangleIcon,
+  LightBulbIcon,
+  GlobeAltIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { useApp } from '../App';
 import LoadingSpinner from '../components/LoadingSpinner';
