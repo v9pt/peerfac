@@ -66,6 +66,16 @@ class ClaimModel(BaseModel):
     media_base64: Optional[str] = None
     ai_summary: Optional[str] = None
     ai_label: Optional[str] = None
+    ai_confidence: Optional[float] = None
+    ai_reasoning: Optional[str] = None
+    ai_entities: Optional[List[Dict[str, Any]]] = None
+    ai_bias_score: Optional[float] = None
+    ai_stance: Optional[str] = None
+    ai_evidence_quality: Optional[str] = None
+    ai_temporal_relevance: Optional[float] = None
+    ai_contradiction_flags: Optional[List[str]] = None
+    ai_verification_suggestions: Optional[List[str]] = None
+    ai_sources_analysis: Optional[List[Dict[str, Any]]] = None
     created_at: datetime
     support_count: int = 0
     refute_count: int = 0
