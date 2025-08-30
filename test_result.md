@@ -231,6 +231,72 @@
       - working: true
         agent: "testing"
         comment: "✅ TESTED: POST /api/analyze/claim returns JSON with summary and label fields, heuristic analysis working (detected 'official confirmed' as 'Likely True')"
+  - task: "User registration with validation"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: POST /api/auth/register with valid data returns access token and user data. Password validation working (min 6 chars, requires letters and numbers). Duplicate email/username validation working correctly."
+  - task: "User login authentication"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: POST /api/auth/login with valid credentials returns access token and user data. Invalid email/password combinations correctly rejected with 401 status."
+  - task: "JWT protected endpoints"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: GET /api/auth/me with Bearer token returns current user info. Requests without token correctly rejected with 401 status. JWT authentication working properly."
+  - task: "Authenticated claim creation"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Authenticated users can create claims using JWT token, system auto-uses authenticated user ID instead of provided author_id. Backward compatibility maintained for anonymous users."
+  - task: "Authenticated verification creation"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Authenticated users can create verifications using JWT token, system auto-uses authenticated user ID. Reputation system works for both authenticated and anonymous users."
+  - task: "Anonymous user backward compatibility"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: POST /api/users/bootstrap still works for creating anonymous users. Anonymous users can still create claims and verifications using author_id. Full backward compatibility maintained."
 
 ## frontend:
   - task: "Migrate from CRACO to Vite"
