@@ -106,8 +106,7 @@ function AppContent() {
 
   return (
     <AppContext.Provider value={contextValue}>
-      <Router>
-        <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
+      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
           <Navbar />
           
           <div className="flex">
