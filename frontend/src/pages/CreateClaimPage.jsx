@@ -81,7 +81,7 @@ const CreateClaimPage = () => {
 
     try {
       const response = await axios.post(`${API}/claims`, {
-        author_id: user.id,
+        author_id: user?.id, // For backward compatibility with anonymous users
         text: formData.text.trim(),
         link: formData.link.trim() || null,
         media_base64: null,
