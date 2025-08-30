@@ -181,8 +181,12 @@ class PeerFactTester:
     def test_user_login_valid(self):
         """Test 5: POST /api/auth/login with valid credentials"""
         try:
+            if not self.authenticated_user:
+                self.log_result("User login (valid)", False, "No authenticated user from registration test")
+                return False
+                
             payload = {
-                "email": "test@example.com",
+                "email": self.authenticated_user["email"],
                 "password": "password123"
             }
             response = self.session.post(f"{self.base_url}/auth/login", json=payload)
