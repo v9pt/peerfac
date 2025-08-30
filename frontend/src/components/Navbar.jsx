@@ -89,7 +89,7 @@ const Navbar = () => {
                 </button>
 
                 {/* User Menu */}
-                <div className="relative">
+                <div className="relative" ref={menuRef}>
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className={`flex items-center space-x-2 p-2 rounded-lg ${theme === 'dark' ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'} transition-colors`}
