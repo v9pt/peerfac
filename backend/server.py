@@ -428,6 +428,118 @@ async def analyze_claim(body: Dict[str, str]):
     return result
 
 
+@api_router.post("/analyze/comprehensive")
+async def comprehensive_analysis(body: Dict[str, str]):
+    """Full comprehensive analysis with all AI features"""
+    text = body.get("text")
+    link = body.get("link")
+    if not text:
+        raise HTTPException(status_code=400, detail="text required")
+    
+    try:
+        from advanced_ai_engine import ai_engine
+        result = await ai_engine.comprehensive_analysis(text, link)
+        
+        # Convert dataclass to dict for JSON response
+        return {
+            "summary": result.summary,
+            "label": result.label,
+            "confidence": result.confidence,
+            "reasoning": result.reasoning,
+            "entities": result.entities,
+            "sources_analysis": result.sources_analysis,
+            "bias_score": result.bias_score,
+            "stance": result.stance,
+            "fact_checks": result.fact_checks,
+            "evidence_quality": result.evidence_quality,
+            "temporal_relevance": result.temporal_relevance,
+            "contradiction_flags": result.contradiction_flags,
+            "verification_suggestions": result.verification_suggestions
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@api_router.post("/analyze/entities")
+async def extract_entities(body: Dict[str, str]):
+    """Extract and analyze entities from text"""
+    text = body.get("text")
+    if not text:
+        raise HTTPException(status_code=400, detail="text required")
+    
+    try:
+        from advanced_ai_engine import ai_engine
+        entities = await ai_engine._entity_extraction(text)
+        return {"entities": entities}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Entity extraction failed: {str(e)}")
+
+
+@api_router.post("/analyze/bias")
+async def analyze_bias(body: Dict[str, str]):
+    """Analyze bias and stance in text"""
+    text = body.get("text")
+    if not text:
+        raise HTTPException(status_code=400, detail="text required")
+    
+    try:
+        from advanced_ai_engine import ai_engine
+        bias_analysis = await ai_engine._bias_and_stance_analysis(text)
+        return bias_analysis
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bias analysis failed: {str(e)}")
+
+
+@api_router.post("/analyze/source")
+async def analyze_source(body: Dict[str, str]):
+    """Analyze source credibility"""
+    url = body.get("url")
+    if not url:
+        raise HTTPException(status_code=400, detail="url required")
+    
+    try:
+        from advanced_ai_engine import ai_engine
+        source_analysis = await ai_engine._source_analysis(url)
+        return {"source_analysis": source_analysis}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Source analysis failed: {str(e)}")
+
+
+@api_router.get("/claims/{claim_id}/detailed")
+async def get_detailed_claim(claim_id: str):
+    """Get claim with detailed AI analysis"""
+    claim = await db.claims.find_one({"id": claim_id})
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    claim = clean_doc(claim)
+    
+    # Get verifications and verdict
+    verifs = await db.verifications.find({"claim_id": claim_id}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    verdict = await compute_verdict(claim_id)
+    
+    # Return enhanced response with all AI analysis
+    return {
+        "claim": claim,
+        "verifications": verifs,
+        "verdict": verdict,
+        "ai_analysis": {
+            "summary": claim.get("ai_summary"),
+            "label": claim.get("ai_label"),
+            "confidence": claim.get("ai_confidence"),
+            "reasoning": claim.get("ai_reasoning"),
+            "entities": claim.get("ai_entities", []),
+            "bias_score": claim.get("ai_bias_score"),
+            "stance": claim.get("ai_stance"),
+            "evidence_quality": claim.get("ai_evidence_quality"),
+            "temporal_relevance": claim.get("ai_temporal_relevance"),
+            "contradiction_flags": claim.get("ai_contradiction_flags", []),
+            "verification_suggestions": claim.get("ai_verification_suggestions", []),
+            "sources_analysis": claim.get("ai_sources_analysis", [])
+        }
+    }
+
+
 # --------------------------------------
 # Routes: Leaderboard & Source Reliability (Phase 2)
 # --------------------------------------
