@@ -419,10 +419,13 @@ async def claim_verdict(claim_id: str):
 @api_router.post("/analyze/claim")
 async def analyze_claim(body: Dict[str, str]):
     text = body.get("text")
+    link = body.get("link")
     if not text:
         raise HTTPException(status_code=400, detail="text required")
-    res = await try_ai_analyze(text)
-    return res
+    
+    # Use enhanced AI analysis
+    result = await try_ai_analyze(text, link)
+    return result
 
 
 # --------------------------------------
