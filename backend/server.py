@@ -553,7 +553,7 @@ async def create_claim(body: ClaimCreate, current_user: Optional[dict] = Depends
 
     doc = {
         "id": claim_id,
-        "author_id": body.author_id,
+        "author_id": author_id,
         "text": body.text,
         "link": body.link,
         "media_base64": body.media_base64,
