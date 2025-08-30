@@ -167,7 +167,6 @@ function AppContent() {
             </main>
           </div>
         </div>
-      </Router>
     </AppContext.Provider>
   );
 }
