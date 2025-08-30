@@ -44,13 +44,23 @@ const ClaimDetailPage = () => {
     const fetchClaimDetail = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API}/claims/${claimId}`);
+        // Use the detailed endpoint to get enhanced AI analysis
+        const response = await axios.get(`${API}/claims/${claimId}/detailed`);
         setClaim(response.data.claim);
         setVerifications(response.data.verifications || []);
         setVerdict(response.data.verdict || null);
+        setAiAnalysis(response.data.ai_analysis || null);
       } catch (error) {
         console.error('Failed to fetch claim details:', error);
-        setError('Failed to load claim details');
+        // Fallback to regular endpoint if detailed fails
+        try {
+          const fallbackResponse = await axios.get(`${API}/claims/${claimId}`);
+          setClaim(fallbackResponse.data.claim);
+          setVerifications(fallbackResponse.data.verifications || []);
+          setVerdict(fallbackResponse.data.verdict || null);
+        } catch (fallbackError) {
+          setError('Failed to load claim details');
+        }
       } finally {
         setLoading(false);
       }
