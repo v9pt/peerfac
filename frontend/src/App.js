@@ -78,10 +78,10 @@ function AppContent() {
   };
 
   useEffect(() => {
-    if (user) {
+    if ((user || isAuthenticated) && !authLoading) {
       fetchClaims();
     }
-  }, [user]);
+  }, [user, isAuthenticated, authLoading]);
 
   const contextValue = {
     user,
