@@ -23,7 +23,8 @@ The frontend will be available at `http://localhost:3000`
 
 ```bash
 cd backend
-pip install -r requirements.txt
+# Install with the correct index for emergentintegrations
+pip install -r requirements.txt --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
 python server.py
 ```
 
