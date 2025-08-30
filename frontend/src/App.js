@@ -31,34 +31,41 @@ export const useApp = () => useContext(AppContext);
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+// Inner App component that uses Auth context
+function AppContent() {
+  const { user, loading: authLoading, loginAsAnonymous, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [claims, setClaims] = useState([]);
   const [theme, setTheme] = useState('dark');
+  const [loading, setLoading] = useState(true);
 
-  // Bootstrap user on app start
+  // Initialize anonymous user if no authentication
   useEffect(() => {
     const initializeUser = async () => {
-      try {
-        const existing = localStorage.getItem('peerfact_user');
-        if (existing) {
-          setUser(JSON.parse(existing));
-        } else {
-          const response = await axios.post(`${API}/users/bootstrap`, { username: null });
-          setUser(response.data);
-          localStorage.setItem('peerfact_user', JSON.stringify(response.data));
+      if (!authLoading && !isAuthenticated && !user) {
+        try {
+          const existing = localStorage.getItem('peerfact_user');
+          if (existing) {
+            // User has an existing anonymous session but no auth token
+            const userData = JSON.parse(existing);
+            if (userData.is_anonymous) {
+              // Keep the anonymous user data
+            }
+          } else {
+            // Create new anonymous user if none exists
+            await loginAsAnonymous();
+          }
+        } catch (error) {
+          console.error('Failed to initialize user:', error);
         }
-      } catch (error) {
-        console.error('Failed to bootstrap user:', error);
-      } finally {
-        setLoading(false);
       }
+      setLoading(false);
     };
 
-    initializeUser();
-  }, []);
+    if (!authLoading) {
+      initializeUser();
+    }
+  }, [authLoading, isAuthenticated, user, loginAsAnonymous]);
 
   // Fetch claims
   const fetchClaims = async () => {
