@@ -254,6 +254,245 @@ const ClaimDetailPage = () => {
             </div>
           </div>
 
+          {/* AI Analysis Section */}
+          {aiAnalysis && (
+            <div className={`p-8 rounded-xl border ${
+              theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            }`}>
+              <div className="flex items-center space-x-2 mb-6">
+                <BeakerIcon className="w-6 h-6 text-blue-500" />
+                <h2 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  AI Analysis
+                </h2>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Confidence & Evidence Quality */}
+                <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                  <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Analysis Confidence
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                          AI Confidence
+                        </span>
+                        <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {Math.round((aiAnalysis.confidence || 0) * 100)}%
+                        </span>
+                      </div>
+                      <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'}`}>
+                        <div 
+                          className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.round((aiAnalysis.confidence || 0) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    {aiAnalysis.evidence_quality && (
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                          Evidence Quality
+                        </span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          aiAnalysis.evidence_quality === 'high' ? 'bg-green-100 text-green-800' :
+                          aiAnalysis.evidence_quality === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {aiAnalysis.evidence_quality.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bias Analysis */}
+                {aiAnalysis.bias_score !== undefined && (
+                  <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                    <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Bias & Stance
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                            Bias Score
+                          </span>
+                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {Math.round((aiAnalysis.bias_score || 0) * 100)}%
+                          </span>
+                        </div>
+                        <div className={`w-full h-2 rounded-full ${theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'}`}>
+                          <div 
+                            className="h-full bg-orange-500 rounded-full transition-all duration-300"
+                            style={{ width: `${Math.round((aiAnalysis.bias_score || 0) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      {aiAnalysis.stance && (
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                            Stance
+                          </span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            aiAnalysis.stance.includes('positive') ? 'bg-green-100 text-green-800' :
+                            aiAnalysis.stance.includes('negative') ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {aiAnalysis.stance.toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* AI Reasoning */}
+              {aiAnalysis.reasoning && (
+                <div className="mt-6">
+                  <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    AI Reasoning
+                  </h3>
+                  <p className={`${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'} leading-relaxed`}>
+                    {aiAnalysis.reasoning}
+                  </p>
+                </div>
+              )}
+
+              {/* Entities */}
+              {aiAnalysis.entities && aiAnalysis.entities.length > 0 && (
+                <div className="mt-6">
+                  <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Key Entities
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {aiAnalysis.entities.map((entity, index) => (
+                      <span
+                        key={index}
+                        className={`px-3 py-1 rounded-full text-sm border ${
+                          entity.importance === 'high' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                          entity.importance === 'medium' ? 'bg-green-100 text-green-800 border-green-200' :
+                          'bg-gray-100 text-gray-800 border-gray-200'
+                        }`}
+                      >
+                        {entity.text} ({entity.type})
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Contradiction Flags */}
+              {aiAnalysis.contradiction_flags && aiAnalysis.contradiction_flags.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <ExclamationTriangleIcon className="w-5 h-5 text-red-500" />
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Potential Issues
+                    </h3>
+                  </div>
+                  <div className="space-y-2">
+                    {aiAnalysis.contradiction_flags.map((flag, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg"
+                      >
+                        <ExclamationTriangleIcon className="w-4 h-4 text-red-500 mt-0.5" />
+                        <span className="text-red-700 text-sm">{flag}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Verification Suggestions */}
+              {aiAnalysis.verification_suggestions && aiAnalysis.verification_suggestions.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <LightBulbIcon className="w-5 h-5 text-yellow-500" />
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Verification Suggestions
+                    </h3>
+                  </div>
+                  <div className="space-y-2">
+                    {aiAnalysis.verification_suggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className={`flex items-start space-x-2 p-3 rounded-lg ${
+                          theme === 'dark' ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
+                        }`}
+                      >
+                        <LightBulbIcon className="w-4 h-4 text-blue-500 mt-0.5" />
+                        <span className={`text-sm ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'}`}>
+                          {suggestion}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Source Analysis */}
+              {aiAnalysis.sources_analysis && aiAnalysis.sources_analysis.length > 0 && (
+                <div className="mt-6">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <GlobeAltIcon className="w-5 h-5 text-green-500" />
+                    <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Source Analysis
+                    </h3>
+                  </div>
+                  {aiAnalysis.sources_analysis.map((source, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-lg border mb-3 ${
+                        theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          {source.domain}
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            source.credibility_score >= 0.8 ? 'bg-green-100 text-green-800' :
+                            source.credibility_score >= 0.6 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {Math.round(source.credibility_score * 100)}% credible
+                          </span>
+                          {source.is_fact_check_source && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
+                              Fact-Checker
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            Reputation: 
+                          </span>
+                          <span className={`ml-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {source.domain_reputation.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div>
+                          <span className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                            Type: 
+                          </span>
+                          <span className={`ml-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {source.content_type}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Verifications */}
           <div className={`p-6 rounded-xl border ${
             theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
