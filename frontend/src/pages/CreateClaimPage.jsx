@@ -47,8 +47,10 @@ const CreateClaimPage = () => {
     
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/analyze/claim`, {
-        text: formData.text
+      // Use the comprehensive analysis endpoint for detailed insights
+      const response = await axios.post(`${API}/analyze/comprehensive`, {
+        text: formData.text,
+        link: formData.link.trim() || null
       });
       setAiPreview(response.data);
       setShowPreview(true);
