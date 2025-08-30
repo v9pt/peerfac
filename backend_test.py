@@ -10,7 +10,7 @@ import sys
 from typing import Dict, Any, Optional
 
 # Get backend URL from environment
-BACKEND_URL = "https://peerfact-users.preview.emergentagent.com/api"
+BACKEND_URL = "http://localhost:8001/api"
 
 class PeerFactTester:
     def __init__(self):
