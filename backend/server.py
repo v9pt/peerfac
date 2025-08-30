@@ -534,10 +534,16 @@ async def users_bootstrap(body: UserCreate):
 
 
 @api_router.post("/claims", response_model=ClaimModel)
-async def create_claim(body: ClaimCreate):
-    author = await get_user(body.author_id)
-    if not author:
-        raise HTTPException(status_code=400, detail="Invalid author_id")
+async def create_claim(body: ClaimCreate, current_user: Optional[dict] = Depends(get_current_user)):
+    # If user is authenticated, use their ID, otherwise validate the provided author_id
+    if current_user:
+        author_id = current_user["id"]
+        author = current_user
+    else:
+        author = await get_user(body.author_id)
+        if not author:
+            raise HTTPException(status_code=400, detail="Invalid author_id")
+        author_id = body.author_id
 
     claim_id = str(uuid.uuid4())
     now = datetime.utcnow()
