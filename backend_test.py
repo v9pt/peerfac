@@ -39,6 +39,311 @@ class PeerFactTester:
             "response": response_data
         })
     
+    def test_user_registration_valid(self):
+        """Test 1: POST /api/auth/register with valid data"""
+        try:
+            payload = {
+                "username": "testuser1",
+                "email": "test@example.com", 
+                "password": "password123"
+            }
+            response = self.session.post(f"{self.base_url}/auth/register", json=payload)
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["access_token", "token_type", "user", "message"]
+                
+                if all(field in data for field in required_fields):
+                    user = data["user"]
+                    if user["username"] == "testuser1" and user["email"] == "test@example.com":
+                        self.auth_token = data["access_token"]
+                        self.authenticated_user = user
+                        self.log_result("User registration (valid)", True, f"Registered user: {user['username']}")
+                        return True
+                    else:
+                        self.log_result("User registration (valid)", False, "User data mismatch", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("User registration (valid)", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("User registration (valid)", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("User registration (valid)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_user_registration_duplicate_email(self):
+        """Test 2: POST /api/auth/register with duplicate email"""
+        try:
+            payload = {
+                "username": "testuser2",
+                "email": "test@example.com",  # Same email as previous test
+                "password": "password123"
+            }
+            response = self.session.post(f"{self.base_url}/auth/register", json=payload)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if data.get("detail") == "Email already registered":
+                    self.log_result("User registration (duplicate email)", True, "Correctly rejected duplicate email")
+                    return True
+                else:
+                    self.log_result("User registration (duplicate email)", False, f"Unexpected error: {data.get('detail')}", data)
+                    return False
+            else:
+                self.log_result("User registration (duplicate email)", False, f"Expected 400, got {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("User registration (duplicate email)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_user_registration_duplicate_username(self):
+        """Test 3: POST /api/auth/register with duplicate username"""
+        try:
+            payload = {
+                "username": "testuser1",  # Same username as first test
+                "email": "test2@example.com",
+                "password": "password123"
+            }
+            response = self.session.post(f"{self.base_url}/auth/register", json=payload)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if data.get("detail") == "Username already taken":
+                    self.log_result("User registration (duplicate username)", True, "Correctly rejected duplicate username")
+                    return True
+                else:
+                    self.log_result("User registration (duplicate username)", False, f"Unexpected error: {data.get('detail')}", data)
+                    return False
+            else:
+                self.log_result("User registration (duplicate username)", False, f"Expected 400, got {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("User registration (duplicate username)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_user_registration_password_validation(self):
+        """Test 4: POST /api/auth/register with invalid passwords"""
+        test_cases = [
+            {"password": "123", "expected_error": "Password must be at least 6 characters long"},
+            {"password": "password", "expected_error": "Password must contain at least one number"},
+            {"password": "123456", "expected_error": "Password must contain at least one letter"}
+        ]
+        
+        all_passed = True
+        for i, case in enumerate(test_cases):
+            try:
+                payload = {
+                    "username": f"testuser_pwd_{i}",
+                    "email": f"test_pwd_{i}@example.com",
+                    "password": case["password"]
+                }
+                response = self.session.post(f"{self.base_url}/auth/register", json=payload)
+                
+                if response.status_code == 400:
+                    data = response.json()
+                    if data.get("detail") == case["expected_error"]:
+                        self.log_result(f"Password validation ({case['password']})", True, f"Correctly rejected: {case['expected_error']}")
+                    else:
+                        self.log_result(f"Password validation ({case['password']})", False, f"Expected: {case['expected_error']}, Got: {data.get('detail')}", data)
+                        all_passed = False
+                else:
+                    self.log_result(f"Password validation ({case['password']})", False, f"Expected 400, got {response.status_code}", response.text)
+                    all_passed = False
+                    
+            except Exception as e:
+                self.log_result(f"Password validation ({case['password']})", False, f"Exception: {str(e)}")
+                all_passed = False
+        
+        return all_passed
+
+    def test_user_login_valid(self):
+        """Test 5: POST /api/auth/login with valid credentials"""
+        try:
+            payload = {
+                "email": "test@example.com",
+                "password": "password123"
+            }
+            response = self.session.post(f"{self.base_url}/auth/login", json=payload)
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["access_token", "token_type", "user"]
+                
+                if all(field in data for field in required_fields):
+                    user = data["user"]
+                    if user["email"] == "test@example.com":
+                        # Update token for subsequent tests
+                        self.auth_token = data["access_token"]
+                        self.authenticated_user = user
+                        self.log_result("User login (valid)", True, f"Logged in user: {user['username']}")
+                        return True
+                    else:
+                        self.log_result("User login (valid)", False, "User data mismatch", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("User login (valid)", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("User login (valid)", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("User login (valid)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_user_login_invalid(self):
+        """Test 6: POST /api/auth/login with invalid credentials"""
+        test_cases = [
+            {"email": "wrong@example.com", "password": "password123"},
+            {"email": "test@example.com", "password": "wrongpassword"}
+        ]
+        
+        all_passed = True
+        for case in test_cases:
+            try:
+                response = self.session.post(f"{self.base_url}/auth/login", json=case)
+                
+                if response.status_code == 401:
+                    data = response.json()
+                    if data.get("detail") == "Incorrect email or password":
+                        self.log_result(f"Login invalid ({case['email']})", True, "Correctly rejected invalid credentials")
+                    else:
+                        self.log_result(f"Login invalid ({case['email']})", False, f"Unexpected error: {data.get('detail')}", data)
+                        all_passed = False
+                else:
+                    self.log_result(f"Login invalid ({case['email']})", False, f"Expected 401, got {response.status_code}", response.text)
+                    all_passed = False
+                    
+            except Exception as e:
+                self.log_result(f"Login invalid ({case['email']})", False, f"Exception: {str(e)}")
+                all_passed = False
+        
+        return all_passed
+
+    def test_auth_me_endpoint(self):
+        """Test 7: GET /api/auth/me with Bearer token"""
+        try:
+            if not self.auth_token:
+                self.log_result("Auth me endpoint", False, "No auth token available")
+                return False
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            response = self.session.get(f"{self.base_url}/auth/me", headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["id", "username", "email", "is_anonymous", "reputation"]
+                
+                if all(field in data for field in required_fields):
+                    if data["username"] == "testuser1" and data["email"] == "test@example.com":
+                        self.log_result("Auth me endpoint", True, f"Retrieved user info: {data['username']}")
+                        return True
+                    else:
+                        self.log_result("Auth me endpoint", False, "User data mismatch", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("Auth me endpoint", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("Auth me endpoint", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Auth me endpoint", False, f"Exception: {str(e)}")
+            return False
+
+    def test_auth_me_no_token(self):
+        """Test 8: GET /api/auth/me without token"""
+        try:
+            response = self.session.get(f"{self.base_url}/auth/me")
+            
+            if response.status_code == 401:
+                self.log_result("Auth me (no token)", True, "Correctly rejected request without token")
+                return True
+            else:
+                self.log_result("Auth me (no token)", False, f"Expected 401, got {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Auth me (no token)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_create_claim_authenticated(self):
+        """Test 9: Create claim as authenticated user (should auto-use user ID)"""
+        try:
+            if not self.auth_token:
+                self.log_result("Create claim (authenticated)", False, "No auth token available")
+                return False
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            payload = {
+                "author_id": "dummy-id",  # Should be ignored when authenticated
+                "text": "New renewable energy policy announced by government",
+                "link": "https://example.com/policy"
+            }
+            
+            response = self.session.post(f"{self.base_url}/claims", json=payload, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data["author_id"] == self.authenticated_user["id"]:
+                    self.test_claims.append(data)
+                    self.log_result("Create claim (authenticated)", True, f"Created claim with authenticated user ID: {data['author_id']}")
+                    return True
+                else:
+                    self.log_result("Create claim (authenticated)", False, f"Expected author_id: {self.authenticated_user['id']}, got: {data['author_id']}", data)
+                    return False
+            else:
+                self.log_result("Create claim (authenticated)", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Create claim (authenticated)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_create_verification_authenticated(self):
+        """Test 10: Create verification as authenticated user"""
+        try:
+            if not self.auth_token or not self.test_claims:
+                self.log_result("Create verification (authenticated)", False, "No auth token or test claims available")
+                return False
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            claim_id = self.test_claims[-1]["id"]  # Use the claim created by authenticated user
+            
+            payload = {
+                "author_id": "dummy-id",  # Should be ignored when authenticated
+                "stance": "support",
+                "source_url": "https://example.com/verification",
+                "explanation": "This is verified by authenticated user"
+            }
+            
+            response = self.session.post(f"{self.base_url}/claims/{claim_id}/verify", json=payload, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data["author_id"] == self.authenticated_user["id"]:
+                    self.log_result("Create verification (authenticated)", True, f"Created verification with authenticated user ID: {data['author_id']}")
+                    return True
+                else:
+                    self.log_result("Create verification (authenticated)", False, f"Expected author_id: {self.authenticated_user['id']}, got: {data['author_id']}", data)
+                    return False
+            else:
+                self.log_result("Create verification (authenticated)", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Create verification (authenticated)", False, f"Exception: {str(e)}")
+            return False
+
     def test_health_endpoint(self):
         """Test 1: GET /api/ -> expect {"message":"PeerFact API is live"}"""
         try:
