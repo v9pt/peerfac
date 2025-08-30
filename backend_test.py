@@ -769,11 +769,24 @@ class PeerFactTester:
     
     def run_all_tests(self):
         """Run all tests in sequence"""
-        print(f"🚀 Starting PeerFact Backend API Tests")
+        print(f"🚀 Starting PeerFact Backend API Tests with Authentication")
         print(f"📍 Testing against: {self.base_url}")
         print("=" * 60)
         
         tests = [
+            # Authentication tests first
+            self.test_user_registration_valid,
+            self.test_user_registration_duplicate_email,
+            self.test_user_registration_duplicate_username,
+            self.test_user_registration_password_validation,
+            self.test_user_login_valid,
+            self.test_user_login_invalid,
+            self.test_auth_me_endpoint,
+            self.test_auth_me_no_token,
+            self.test_create_claim_authenticated,
+            self.test_create_verification_authenticated,
+            
+            # Original tests (backward compatibility)
             self.test_health_endpoint,
             self.test_user_bootstrap,
             self.test_create_claim_missing_author,
