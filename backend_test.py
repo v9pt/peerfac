@@ -80,9 +80,13 @@ class PeerFactTester:
     def test_user_registration_duplicate_email(self):
         """Test 2: POST /api/auth/register with duplicate email"""
         try:
+            if not self.authenticated_user:
+                self.log_result("User registration (duplicate email)", False, "No authenticated user from previous test")
+                return False
+                
             payload = {
                 "username": "testuser2",
-                "email": "test@example.com",  # Same email as previous test
+                "email": self.authenticated_user["email"],  # Same email as previous test
                 "password": "password123"
             }
             response = self.session.post(f"{self.base_url}/auth/register", json=payload)
