@@ -306,7 +306,8 @@ async def create_claim(body: ClaimCreate):
     claim_id = str(uuid.uuid4())
     now = datetime.utcnow()
 
-    ai = await try_ai_analyze(body.text)
+    # Enhanced AI analysis with source URL
+    ai_result = await try_ai_analyze(body.text, body.link)
 
     doc = {
         "id": claim_id,
@@ -315,8 +316,18 @@ async def create_claim(body: ClaimCreate):
         "link": body.link,
         "media_base64": body.media_base64,
         "created_at": now,
-        "ai_summary": ai.get("summary"),
-        "ai_label": ai.get("label"),
+        "ai_summary": ai_result.get("summary"),
+        "ai_label": ai_result.get("label"),
+        "ai_confidence": ai_result.get("confidence", 0.5),
+        "ai_reasoning": ai_result.get("reasoning"),
+        "ai_entities": ai_result.get("entities", []),
+        "ai_bias_score": ai_result.get("bias_score", 0.5),
+        "ai_stance": ai_result.get("stance", "neutral"),
+        "ai_evidence_quality": ai_result.get("evidence_quality", "medium"),
+        "ai_temporal_relevance": ai_result.get("temporal_relevance", 0.5),
+        "ai_contradiction_flags": ai_result.get("contradiction_flags", []),
+        "ai_verification_suggestions": ai_result.get("verification_suggestions", []),
+        "ai_sources_analysis": ai_result.get("sources_analysis", []),
         "support_count": 0,
         "refute_count": 0,
         "unclear_count": 0,
