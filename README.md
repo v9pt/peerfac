@@ -87,17 +87,32 @@ npm run stop      # Stop all services
 npm run status    # Check service status
 npm run test      # Run all tests
 npm run clean     # Clean dependencies and reset
-```
-   - Set up `backend/.env` with your MongoDB connection string:
-     ```
-     MONGO_URL=mongodb://localhost:27017/peerfact
-     EMERGENT_LLM_KEY=your_ai_key_here_optional
-     ```
+## ⚙️ Environment Variables
 
-3. **Run in Development**:
-   ```bash
-   # Terminal 1 - Backend
-   cd backend
+The setup scripts automatically create `.env` files, but you can customize them:
+
+**Backend (`backend/.env`)**:
+```bash
+# Required
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=peerfact
+SECRET_KEY=your-secure-jwt-secret
+
+# Optional - AI Features
+EMERGENT_LLM_KEY=your_emergent_key_here
+OPENAI_API_KEY=your_openai_key_here
+
+# Optional - Payments  
+STRIPE_API_KEY=your_stripe_key_here
+```
+
+**Frontend (`frontend/.env`)**:
+```bash
+VITE_BACKEND_URL=http://localhost:8001
+VITE_APP_NAME=PeerFact
+```
+
+## 🧪 Testing
    python server.py
    
    # Terminal 2 - Frontend  
