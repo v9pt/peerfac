@@ -12,11 +12,14 @@
     "react-router-dom": "^7.8.0"
   },
   "scripts": {
-    "dev": "vite",
-    "start": "vite",
+    "dev": "vite --host localhost --port 3000",
+    "start": "vite --host localhost --port 3000",
     "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+    "preview": "vite preview --host localhost --port 4173",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --ext js,jsx --fix",
+    "dev:windows": "set NODE_ENV=development && vite --host localhost --port 3000",
+    "clean": "rimraf dist node_modules/.vite"
   },
   "devDependencies": {
     "@types/react": "^19.0.2",
