@@ -23,9 +23,9 @@ echo "🔍 Checking services..."
 if check_port 27017; then
     echo "✅ MongoDB running on port 27017"
 else
-    echo "❌ MongoDB not running on port 27017"
-    echo "   Starting MongoDB..."
+    echo "🔄 Starting MongoDB..."
     sudo supervisorctl start mongodb
+    sleep 3
 fi
 
 # Check Backend
@@ -33,19 +33,17 @@ if check_port 8001; then
     echo "✅ Backend running on port 8001"
 else
     echo "🔄 Starting backend..."
-    cd /app/backend && python server.py &
-    BACKEND_PID=$!
-    echo "   Backend started with PID: $BACKEND_PID"
+    sudo supervisorctl start backend
+    sleep 2
 fi
 
-# Check Frontend
+# Check Frontend  
 if check_port 3000; then
     echo "✅ Frontend running on port 3000"
 else
     echo "🔄 Starting frontend..."
-    cd /app/frontend && yarn dev &
-    FRONTEND_PID=$!
-    echo "   Frontend started with PID: $FRONTEND_PID"
+    sudo supervisorctl start frontend
+    sleep 2
 fi
 
 echo ""
