@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   FireIcon,
-  TrendingUpIcon,
+  ArrowTrendingUpIcon as TrendingUpIcon,
   HashtagIcon,
   GlobeAltIcon
 } from '@heroicons/react/24/outline';
