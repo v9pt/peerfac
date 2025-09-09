@@ -57,6 +57,12 @@ echo "📖 For detailed VSCode setup, see: VSCODE_DEVELOPMENT.md"
 echo ""
 echo "Press Ctrl+C to stop all services"
 
-# Wait for user interrupt
-trap 'echo ""; echo "🛑 Stopping services..."; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit' INT
-wait
+# Show final status
+echo ""
+echo "📊 Service Status:"
+sudo supervisorctl status
+
+echo ""
+echo "✨ All services are running!"
+echo "💡 To stop services: sudo supervisorctl stop all"
+echo "💡 To restart: sudo supervisorctl restart all"
