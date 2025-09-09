@@ -302,56 +302,100 @@ async def try_ai_analyze(text: str, link: Optional[str] = None) -> Dict[str, Any
         logging.error(f"Advanced AI analysis failed: {e}")
         
         # Fallback to basic analysis
-        api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("EMERGENT_LLM_KEY")
+        api_key = os.environ.get("EMERGENT_LLM_KEY") or os.environ.get("OPENAI_API_KEY")
         if api_key:
             try:
                 from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+                
+                system_message = (
+                    "You are an advanced fact-checking assistant. Analyze claims comprehensively and classify them with high accuracy. "
+                    "Consider context, verifiability, and nuance. Always respond in valid JSON format with these exact keys: "
+                    "summary (brief overview), label (one of: 'Likely True', 'Likely False', 'Unclear', 'Satire/Humor'), "
+                    "reasoning (detailed explanation), confidence (number between 0 and 1). Be precise and objective."
+                )
+                
                 chat = LlmChat(
                     api_key=api_key,
                     session_id=f"peerfact-{uuid.uuid4()}",
-                    system_message=(
-                        "You are an advanced fact-checking assistant. Analyze the claim comprehensively "
-                        "and classify it with high accuracy. Consider context, verifiability, and nuance. "
-                        "Respond in JSON with keys: summary, label, reasoning, confidence (0-1)."
-                    ),
+                    system_message=system_message
                 )
                 chat = chat.with_model("openai", "gpt-4o-mini")
-                user_message = UserMessage(text=f"Claim: {text}\nSource URL: {link or 'None'}\nReturn detailed JSON analysis.")
+                
+                analysis_prompt = f"""
+                Claim to analyze: "{text}"
+                Source URL: {link or 'None provided'}
+                
+                Provide a comprehensive fact-check analysis in JSON format with:
+                - summary: Brief factual summary
+                - label: Classification (Likely True/Likely False/Unclear/Satire/Humor)
+                - reasoning: Detailed explanation of your analysis
+                - confidence: Confidence score (0.0 to 1.0)
+                
+                Return only valid JSON, no other text.
+                """
+                
+                user_message = UserMessage(text=analysis_prompt)
                 result = await chat.send_message(user_message)
                 
                 import json
                 try:
-                    data = json.loads(result)
+                    # Clean the response to extract JSON
+                    result_clean = result.strip()
+                    if result_clean.startswith('```json'):
+                        result_clean = result_clean[7:]
+                    if result_clean.endswith('```'):
+                        result_clean = result_clean[:-3]
+                    result_clean = result_clean.strip()
+                    
+                    data = json.loads(result_clean)
                     return {
-                        "summary": str(data.get("summary") or ""),
-                        "label": str(data.get("label") or "Unclear"),
+                        "summary": str(data.get("summary", "Analysis completed")),
+                        "label": str(data.get("label", "Unclear")),
                         "confidence": float(data.get("confidence", 0.5)),
-                        "reasoning": str(data.get("reasoning", "")),
+                        "reasoning": str(data.get("reasoning", "AI analysis performed")),
                         "entities": [],
                         "bias_score": 0.5,
                         "stance": "neutral",
                         "evidence_quality": "medium",
                         "temporal_relevance": 0.5,
                         "contradiction_flags": [],
-                        "verification_suggestions": [],
+                        "verification_suggestions": ["Manual verification recommended"],
                         "sources_analysis": []
                     }
-                except Exception:
+                except json.JSONDecodeError:
+                    # If JSON parsing fails, use the raw result as summary
                     summary = str(result)[:300] if result else text[:240] + "..."
+                    
+                    # Simple heuristic labeling as fallback
+                    lowered = text.lower()
+                    if any(k in lowered for k in ["fake", "hoax", "debunk", "false"]):
+                        label = "Likely False"
+                        confidence = 0.7
+                    elif any(k in lowered for k in ["official", "confirmed", "verified", "true"]):
+                        label = "Likely True"
+                        confidence = 0.7
+                    elif any(k in lowered for k in ["satire", "parody", "joke"]):
+                        label = "Satire/Humor"
+                        confidence = 0.8
+                    else:
+                        label = "Unclear"
+                        confidence = 0.4
+                    
                     return {
                         "summary": summary,
-                        "label": "Unclear", 
-                        "confidence": 0.3,
-                        "reasoning": "Basic analysis due to parsing error",
+                        "label": label,
+                        "confidence": confidence,
+                        "reasoning": "AI provided non-JSON response, applied heuristic analysis",
                         "entities": [],
                         "bias_score": 0.5,
                         "stance": "neutral", 
                         "evidence_quality": "medium",
                         "temporal_relevance": 0.5,
                         "contradiction_flags": [],
-                        "verification_suggestions": [],
+                        "verification_suggestions": ["Manual verification recommended"],
                         "sources_analysis": []
                     }
+                    
             except Exception as inner_e:
                 logging.error(f"Fallback AI analysis also failed: {inner_e}")
                 pass
@@ -361,27 +405,31 @@ async def try_ai_analyze(text: str, link: Optional[str] = None) -> Dict[str, Any
         summary = (snippet[:240] + "…") if len(snippet) > 240 else snippet
         lowered = text.lower()
         
-        if any(k in lowered for k in ["satire", "parody"]):
+        if any(k in lowered for k in ["satire", "parody", "joke", "humor"]):
             label = "Satire/Humor"
-        elif any(k in lowered for k in ["fake", "hoax", "debunk"]):
+            confidence = 0.8
+        elif any(k in lowered for k in ["fake", "hoax", "debunk", "false", "misinformation"]):
             label = "Likely False"
-        elif any(k in lowered for k in ["official", "press release", "confirmed"]):
+            confidence = 0.6
+        elif any(k in lowered for k in ["official", "press release", "confirmed", "verified"]):
             label = "Likely True"
+            confidence = 0.6
         else:
             label = "Unclear"
+            confidence = 0.3
             
         return {
             "summary": summary,
             "label": label,
-            "confidence": 0.2,
-            "reasoning": "Heuristic analysis - manual verification recommended",
+            "confidence": confidence,
+            "reasoning": "Heuristic analysis - AI services unavailable, manual verification recommended",
             "entities": [],
             "bias_score": 0.5,
             "stance": "neutral",
             "evidence_quality": "unknown",
             "temporal_relevance": 0.5,
             "contradiction_flags": [],
-            "verification_suggestions": ["Manual fact-checking required"],
+            "verification_suggestions": ["Manual fact-checking required", "Verify with reliable sources"],
             "sources_analysis": []
         }
 
