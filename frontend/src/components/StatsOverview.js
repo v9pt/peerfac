@@ -4,7 +4,7 @@ import {
   ShieldCheckIcon,
   UsersIcon,
   ChartBarIcon,
-  ArrowTrendingUpIcon,
+  TrendingUpIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
 
