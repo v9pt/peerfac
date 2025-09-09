@@ -730,6 +730,83 @@ class PeerFactTester:
         except Exception as e:
             self.log_result("Analyze claim", False, f"Exception: {str(e)}")
             return False
+
+    def test_ai_analysis_covid_claim(self):
+        """REVIEW REQUEST: Test AI analysis with COVID vaccine microchip claim"""
+        try:
+            payload = {"text": "The COVID-19 vaccine contains microchips"}
+            response = self.session.post(f"{self.base_url}/analyze/claim", json=payload)
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["summary", "label", "confidence", "reasoning"]
+                
+                if all(field in data for field in required_fields):
+                    if (data["summary"] and data["label"] and 
+                        data["confidence"] is not None and data["reasoning"]):
+                        self.log_result("AI Analysis (COVID claim)", True, 
+                                      f"Label: {data['label']}, Confidence: {data['confidence']}, Summary: {data['summary'][:100]}...")
+                        return True
+                    else:
+                        self.log_result("AI Analysis (COVID claim)", False, "Missing or empty AI analysis fields", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("AI Analysis (COVID claim)", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("AI Analysis (COVID claim)", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("AI Analysis (COVID claim)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_claim_creation_with_ai_analysis(self):
+        """REVIEW REQUEST: Test claim creation includes AI analysis fields"""
+        try:
+            # First create a user
+            user_payload = {"username": "ai_test_user"}
+            user_response = self.session.post(f"{self.base_url}/users/bootstrap", json=user_payload)
+            
+            if user_response.status_code != 200:
+                self.log_result("Claim creation with AI", False, "Failed to create user", user_response.text)
+                return False
+            
+            user_data = user_response.json()
+            
+            # Create claim with COVID vaccine microchip text
+            claim_payload = {
+                "author_id": user_data["id"],
+                "text": "The COVID-19 vaccine contains microchips"
+            }
+            
+            response = self.session.post(f"{self.base_url}/claims", json=claim_payload)
+            
+            if response.status_code == 200:
+                data = response.json()
+                ai_fields = ["ai_summary", "ai_label", "ai_confidence", "ai_reasoning"]
+                
+                if all(field in data for field in ai_fields):
+                    if (data["ai_summary"] and data["ai_label"] and 
+                        data["ai_confidence"] is not None and data["ai_reasoning"]):
+                        self.log_result("Claim creation with AI", True, 
+                                      f"Created claim with AI analysis - Label: {data['ai_label']}, Confidence: {data['ai_confidence']}")
+                        return True
+                    else:
+                        self.log_result("Claim creation with AI", False, "AI analysis fields are empty or null", data)
+                        return False
+                else:
+                    missing = [f for f in ai_fields if f not in data]
+                    self.log_result("Claim creation with AI", False, f"Missing AI fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("Claim creation with AI", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Claim creation with AI", False, f"Exception: {str(e)}")
+            return False
     
     def test_edge_cases(self):
         """Test edge cases: Invalid claim id in verify -> 404, Invalid author_id in verify -> 400"""
