@@ -1,74 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useRealtime } from './RealtimeProvider';
-import ClaimCard from './ClaimCard';
-import ActivityFeed from './ActivityFeed';
-import TrendingTopics from './TrendingTopics';
-import StatsOverview from './StatsOverview';
-import QuickActions from './QuickActions';
-import {
+import { 
+  PlusIcon, 
+  TrendingUpIcon, 
+  UsersIcon,
+  DocumentTextIcon,
+  SparklesIcon,
+  EyeIcon,
   ChartBarIcon,
-  FireIcon,
   ClockIcon,
-  CheckBadgeIcon,
-  ExclamationTriangleIcon,
-  EyeIcon
+  FireIcon,
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline';
+import ClaimCard from './ClaimCard';
+import LoadingSpinner, { InlineLoader } from './LoadingSpinner';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
 
 export default function Dashboard({ isAuthenticated, currentUser, onLogin }) {
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('recent'); // recent, trending, verified, controversial
   const [stats, setStats] = useState({
     totalClaims: 0,
-    verifiedClaims: 0,
-    activeUsers: 0,
-    accuracyRate: 0
+    totalUsers: 0,
+    verificationsMade: 0,
+    aiAnalyses: 0
   });
-  const { realtimeUpdates, onlineUsers } = useRealtime();
+  const [filter, setFilter] = useState('all'); // all, true, false, unclear
+  const [sortBy, setSortBy] = useState('recent'); // recent, popular, controversial
 
   useEffect(() => {
     fetchClaims();
     fetchStats();
-  }, [filter]);
+  }, [filter, sortBy]);
 
   const fetchClaims = async () => {
     try {
       setLoading(true);
       const response = await fetch(`${BACKEND_URL}/api/claims`);
-      const data = await response.json();
-      
-      // Apply filtering and sorting
-      let filteredClaims = [...data];
-      
-      switch (filter) {
-        case 'trending':
-          filteredClaims.sort((a, b) => 
-            (b.support_count + b.refute_count + b.unclear_count) - 
-            (a.support_count + a.refute_count + a.unclear_count)
-          );
-          break;
-        case 'verified':
-          filteredClaims = filteredClaims.filter(claim => 
-            claim.confidence > 0.7 && 
-            (claim.support_count + claim.refute_count + claim.unclear_count) >= 3
-          );
-          break;
-        case 'controversial':
-          filteredClaims = filteredClaims.filter(claim => 
-            Math.abs(claim.support_count - claim.refute_count) <= 2 &&
-            (claim.support_count + claim.refute_count) >= 4
-          );
-          break;
-        default: // recent
-          filteredClaims.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      if (response.ok) {
+        const data = await response.json();
+        setClaims(data);
       }
-      
-      setClaims(filteredClaims);
     } catch (error) {
-      console.error('Failed to fetch claims:', error);
+      console.error('Error fetching claims:', error);
     } finally {
       setLoading(false);
     }
@@ -76,187 +51,348 @@ export default function Dashboard({ isAuthenticated, currentUser, onLogin }) {
 
   const fetchStats = async () => {
     try {
-      // Simulate stats calculation (in real app, this would be a backend endpoint)
-      const totalClaims = claims.length;
-      const verifiedClaims = claims.filter(c => c.confidence > 0.7).length;
-      const accuracyRate = verifiedClaims > 0 ? (verifiedClaims / totalClaims) * 100 : 0;
-      
-      setStats({
-        totalClaims,
-        verifiedClaims,
-        activeUsers: onlineUsers,
-        accuracyRate: Math.round(accuracyRate)
-      });
+      // In a real app, you'd have dedicated stats endpoints
+      const claimsResponse = await fetch(`${BACKEND_URL}/api/claims`);
+      if (claimsResponse.ok) {
+        const claimsData = await claimsResponse.json();
+        setStats({
+          totalClaims: claimsData.length,
+          totalUsers: 147, // Mock data - would come from actual endpoint
+          verificationsMade: claimsData.reduce((sum, claim) => 
+            sum + (claim.support_count || 0) + (claim.refute_count || 0) + (claim.unclear_count || 0), 0
+          ),
+          aiAnalyses: claimsData.filter(claim => claim.ai_summary).length
+        });
+      }
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      console.error('Error fetching stats:', error);
     }
   };
 
-  const filterOptions = [
-    { key: 'recent', label: 'Recent', icon: ClockIcon, color: 'blue' },
-    { key: 'trending', label: 'Trending', icon: FireIcon, color: 'orange' },
-    { key: 'verified', label: 'Verified', icon: CheckBadgeIcon, color: 'green' },
-    { key: 'controversial', label: 'Controversial', icon: ExclamationTriangleIcon, color: 'red' }
-  ];
+  const filteredClaims = claims.filter(claim => {
+    if (filter === 'all') return true;
+    if (filter === 'true') return claim.ai_label?.toLowerCase().includes('true');
+    if (filter === 'false') return claim.ai_label?.toLowerCase().includes('false');
+    if (filter === 'unclear') return !claim.ai_label?.toLowerCase().includes('true') && !claim.ai_label?.toLowerCase().includes('false');
+    return true;
+  });
+
+  const sortedClaims = [...filteredClaims].sort((a, b) => {
+    if (sortBy === 'recent') {
+      return new Date(b.created_at) - new Date(a.created_at);
+    }
+    if (sortBy === 'popular') {
+      const aTotal = (a.support_count || 0) + (a.refute_count || 0) + (a.unclear_count || 0);
+      const bTotal = (b.support_count || 0) + (b.refute_count || 0) + (b.unclear_count || 0);
+      return bTotal - aTotal;
+    }
+    if (sortBy === 'controversial') {
+      const aControversy = Math.abs((a.support_count || 0) - (a.refute_count || 0));
+      const bControversy = Math.abs((b.support_count || 0) - (b.refute_count || 0));
+      return aControversy - bControversy; // Lower difference = more controversial
+    }
+    return 0;
+  });
+
+  const handleLike = (claimId) => {
+    // Implement like functionality
+    console.log('Liked claim:', claimId);
+  };
+
+  const handleShare = (claim) => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Check out this claim on PeerFact',
+        text: claim.text.substring(0, 100) + '...',
+        url: window.location.origin + `/claim/${claim.id}`
+      });
+    } else {
+      // Fallback to clipboard
+      navigator.clipboard.writeText(window.location.origin + `/claim/${claim.id}`);
+    }
+  };
 
   return (
-    <div className="min-h-screen p-4 lg:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          <div>
-            <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              Fact-Check Dashboard
+    <div className="min-h-screen pt-20 pb-12">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center">
+            <h1 className="text-5xl sm:text-6xl font-bold text-gradient mb-6">
+              Welcome to PeerFact
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Discover truth through community verification • {onlineUsers} users online
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
+              The community-driven platform for fact-checking claims with AI assistance and crowd verification.
+              Help build a more informed world, one fact at a time.
             </p>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <Link
-              to="/analytics"
-              className="btn-glass px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-white/20 transition-all duration-200"
-            >
-              <ChartBarIcon className="w-5 h-5" />
-              <span>Analytics</span>
-            </Link>
-            <Link
-              to="/create"
-              className="btn-gradient text-white px-6 py-2 rounded-lg font-medium hover:shadow-lg transition-all duration-200"
-            >
-              Submit Claim
-            </Link>
+            
+            {!isAuthenticated ? (
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={onLogin}
+                  className="glass-button gradient-primary text-white px-8 py-4 text-lg font-medium hover:shadow-xl hover:shadow-blue-500/25"
+                >
+                  <UsersIcon className="h-5 w-5 mr-2" />
+                  Join the Community
+                </button>
+                <Link
+                  to="/create"
+                  className="glass-button border border-white/20 px-8 py-4 text-lg font-medium text-gray-700 dark:text-gray-300"
+                >
+                  <DocumentTextIcon className="h-5 w-5 mr-2" />
+                  Submit a Claim
+                </Link>
+              </div>
+            ) : (
+              <Link
+                to="/create"
+                className="glass-button gradient-primary text-white px-8 py-4 text-lg font-medium hover:shadow-xl hover:shadow-blue-500/25 inline-flex items-center"
+              >
+                <PlusIcon className="h-5 w-5 mr-2" />
+                Create New Claim
+              </Link>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* Stats Overview */}
-        <StatsOverview stats={stats} />
+      {/* Stats Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="glass-card text-center hover-lift">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <DocumentTextIcon className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.totalClaims.toLocaleString()}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">Claims Submitted</p>
+          </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Claims Feed */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Filter Tabs */}
-            <div className="glass rounded-xl p-4 border border-white/20 dark:border-white/10">
-              <div className="flex flex-wrap gap-2">
-                {filterOptions.map(option => {
-                  const Icon = option.icon;
-                  const isActive = filter === option.key;
-                  
-                  return (
-                    <button
-                      key={option.key}
-                      onClick={() => setFilter(option.key)}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
-                        isActive
-                          ? `bg-${option.color}-500/20 text-${option.color}-600 dark:text-${option.color}-400 border border-${option.color}-500/30`
-                          : 'hover:bg-white/10 border border-transparent'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="font-medium">{option.label}</span>
-                      {option.key === 'trending' && (
-                        <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
-                          {Math.floor(Math.random() * 20) + 5}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+          <div className="glass-card text-center hover-lift">
+            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <CheckBadgeIcon className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.verificationsMade.toLocaleString()}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">Verifications Made</p>
+          </div>
+
+          <div className="glass-card text-center hover-lift">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <UsersIcon className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.totalUsers.toLocaleString()}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">Active Users</p>
+          </div>
+
+          <div className="glass-card text-center hover-lift">
+            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <SparklesIcon className="h-6 w-6 text-white" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {stats.aiAnalyses.toLocaleString()}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">AI Analyses</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Feed */}
+          <div className="lg:col-span-3">
+            {/* Controls */}
+            <div className="glass-card mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                    <FireIcon className="h-6 w-6 mr-2 text-orange-500" />
+                    Recent Claims
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">
+                    Latest fact-checking submissions from the community
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-4">
+                  {/* Filter */}
+                  <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="glass-input text-sm"
+                  >
+                    <option value="all">All Claims</option>
+                    <option value="true">Mostly True</option>
+                    <option value="false">Mostly False</option>
+                    <option value="unclear">Unclear</option>
+                  </select>
+
+                  {/* Sort */}
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="glass-input text-sm"
+                  >
+                    <option value="recent">Most Recent</option>
+                    <option value="popular">Most Popular</option>
+                    <option value="controversial">Most Controversial</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Claims List */}
-            <div className="space-y-4">
-              {loading ? (
-                <div className="space-y-4">
-                  {[...Array(3)].map((_, i) => (
-                    <div key={i} className="glass rounded-xl p-6 border border-white/20 dark:border-white/10 animate-pulse">
-                      <div className="h-4 bg-white/20 rounded w-3/4 mb-3"></div>
-                      <div className="h-4 bg-white/20 rounded w-1/2 mb-4"></div>
-                      <div className="flex space-x-4">
-                        <div className="h-8 bg-white/20 rounded w-20"></div>
-                        <div className="h-8 bg-white/20 rounded w-20"></div>
-                        <div className="h-8 bg-white/20 rounded w-20"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : claims.length > 0 ? (
-                claims.map(claim => (
+            {/* Claims Feed */}
+            {loading ? (
+              <InlineLoader message="Loading claims..." size="lg" />
+            ) : sortedClaims.length === 0 ? (
+              <div className="glass-card text-center py-12">
+                <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                  No claims found
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
+                  Be the first to submit a claim for fact-checking!
+                </p>
+                <Link
+                  to="/create"
+                  className="glass-button gradient-primary text-white inline-flex items-center"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Create First Claim
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {sortedClaims.map((claim) => (
                   <ClaimCard
                     key={claim.id}
                     claim={claim}
                     isAuthenticated={isAuthenticated}
-                    currentUser={currentUser}
                     onLogin={onLogin}
+                    onLike={handleLike}
+                    onShare={handleShare}
                   />
-                ))
-              ) : (
-                <div className="glass rounded-xl p-8 border border-white/20 dark:border-white/10 text-center">
-                  <EyeIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No claims found</h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    {filter === 'verified' && 'No verified claims yet. '}
-                    {filter === 'controversial' && 'No controversial claims at the moment. '}
-                    Be the first to submit a claim for fact-checking!
-                  </p>
-                  <Link
-                    to="/create"
-                    className="btn-gradient text-white px-6 py-2 rounded-lg font-medium inline-block hover:shadow-lg transition-all duration-200"
-                  >
-                    Submit First Claim
-                  </Link>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Right Column - Sidebar */}
+          {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <QuickActions isAuthenticated={isAuthenticated} onLogin={onLogin} />
-            
-            {/* Trending Topics */}
-            <TrendingTopics />
-            
-            {/* Real-time Activity Feed */}
-            <ActivityFeed updates={realtimeUpdates} />
-            
-            {/* Community Leaderboard Preview */}
-            <div className="glass rounded-xl p-4 border border-white/20 dark:border-white/10">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Top Contributors</h3>
-                <Link to="/leaderboard" className="text-blue-500 hover:text-blue-600 text-sm">
-                  View all
+            <div className="glass-card">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Quick Actions
+              </h3>
+              <div className="space-y-3">
+                <Link
+                  to="/create"
+                  className="glass-button w-full flex items-center justify-center gradient-primary text-white"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Submit Claim
+                </Link>
+                <Link
+                  to="/leaderboard"
+                  className="glass-button w-full flex items-center justify-center"
+                >
+                  <TrendingUpIcon className="h-4 w-4 mr-2" />
+                  View Leaderboard
+                </Link>
+                <Link
+                  to="/analytics"
+                  className="glass-button w-full flex items-center justify-center"
+                >
+                  <ChartBarIcon className="h-4 w-4 mr-2" />
+                  Analytics
                 </Link>
               </div>
-              
-              <div className="space-y-3">
-                {[
-                  { name: 'FactChecker_Pro', score: 98.5, badge: '🥇' },
-                  { name: 'TruthSeeker42', score: 94.2, badge: '🥈' },
-                  { name: 'VerifyBot', score: 91.8, badge: '🥉' }
-                ].map((user, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-colors">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-lg">{user.badge}</span>
-                      <div>
-                        <p className="font-medium text-sm">{user.name}</p>
-                        <p className="text-xs text-gray-500">Accuracy: {user.score}%</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="w-12 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-green-400 to-blue-500 rounded-full"
-                          style={{ width: `${user.score}%` }}
-                        ></div>
-                      </div>
-                    </div>
+            </div>
+
+            {/* Trending Topics */}
+            <div className="glass-card">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <FireIcon className="h-5 w-5 mr-2 text-orange-500" />
+                Trending Topics
+              </h3>
+              <div className="space-y-2">
+                {['Climate Change', 'Technology', 'Health', 'Politics', 'Science'].map((topic, index) => (
+                  <div
+                    key={topic}
+                    className="flex items-center justify-between p-2 glass rounded-lg hover:bg-white/10 cursor-pointer"
+                  >
+                    <span className="text-sm text-gray-700 dark:text-gray-300">#{topic}</span>
+                    <span className="text-xs text-gray-500">{Math.floor(Math.random() * 50) + 10}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="glass-card">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                <ClockIcon className="h-5 w-5 mr-2 text-blue-500" />
+                Recent Activity
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      New claim verified as <span className="text-green-500 font-medium">Mostly True</span>
+                    </p>
+                    <p className="text-xs text-gray-500">2 minutes ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      AI analysis completed for new submission
+                    </p>
+                    <p className="text-xs text-gray-500">5 minutes ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
+                      Community member reached Level 5
+                    </p>
+                    <p className="text-xs text-gray-500">10 minutes ago</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* How It Works */}
+            <div className="glass-card">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                🤔 How It Works
+              </h3>
+              <div className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex items-start space-x-2">
+                  <span className="text-blue-500 font-bold">1.</span>
+                  <span>Submit claims that need fact-checking</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="text-blue-500 font-bold">2.</span>
+                  <span>AI provides initial analysis and insights</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="text-blue-500 font-bold">3.</span>
+                  <span>Community verifies with sources and evidence</span>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <span className="text-blue-500 font-bold">4.</span>
+                  <span>Build reputation through accurate fact-checking</span>
+                </div>
               </div>
             </div>
           </div>

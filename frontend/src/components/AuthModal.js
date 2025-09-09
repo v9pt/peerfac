@@ -1,64 +1,87 @@
 import React, { useState } from 'react';
-import {
+import { 
   XMarkIcon,
   EyeIcon,
   EyeSlashIcon,
   UserIcon,
   EnvelopeIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
+import LoadingSpinner from './LoadingSpinner';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
 
 export default function AuthModal({ onClose, onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    password: '',
-    confirmPassword: ''
+    password: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
+  const [success, setSuccess] = useState('');
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    if (error) setError(''); // Clear error when user starts typing
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear specific error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!isLogin && !formData.username.trim()) {
+      newErrors.username = 'Username is required';
+    } else if (!isLogin && formData.username.length < 3) {
+      newErrors.username = 'Username must be at least 3 characters';
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email';
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (!isLogin && formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    } else if (!isLogin && !/(?=.*[a-zA-Z])(?=.*[0-9])/.test(formData.password)) {
+      newErrors.password = 'Password must contain letters and numbers';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) return;
+
     setLoading(true);
-    setError('');
+    setErrors({});
+    setSuccess('');
 
     try {
-      if (!isLogin) {
-        // Registration validation
-        if (formData.password !== formData.confirmPassword) {
-          throw new Error('Passwords do not match');
-        }
-        if (formData.password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
-        }
-        if (formData.username.length < 3) {
-          throw new Error('Username must be at least 3 characters');
-        }
-      }
-
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+      const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const body = isLogin 
         ? { email: formData.email, password: formData.password }
-        : { 
-            username: formData.username, 
-            email: formData.email, 
-            password: formData.password 
-          };
+        : { username: formData.username, email: formData.email, password: formData.password };
 
-      const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+      const response = await fetch(`${BACKEND_URL}/api${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,164 +92,234 @@ export default function AuthModal({ onClose, onLogin }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Authentication failed');
+        setErrors({ general: data.detail || 'Authentication failed' });
+        return;
       }
 
       // Success
-      onLogin(data.user, data.access_token);
-      onClose();
+      setSuccess(isLogin ? 'Login successful!' : 'Registration successful!');
+      
+      setTimeout(() => {
+        onLogin(data.user, data.access_token);
+      }, 1000);
+
     } catch (error) {
-      setError(error.message);
+      console.error('Auth error:', error);
+      setErrors({ general: 'Network error. Please try again.' });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="modal-overlay fixed inset-0" onClick={onClose}></div>
-      
-      <div className="modal-content relative w-full max-w-md">
-        <div className="glass-strong rounded-2xl border border-white/20 dark:border-white/10 p-6 shadow-2xl">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {isLogin ? 'Welcome Back' : 'Join PeerFact'}
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                {isLogin 
-                  ? 'Sign in to continue fact-checking' 
-                  : 'Start your fact-checking journey'
-                }
-              </p>
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={handleOverlayClick}
+    >
+      <div className="glass w-full max-w-md rounded-2xl shadow-2xl transform transition-all duration-300 scale-100">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <SparklesIcon className="h-5 w-5 text-white" />
             </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {isLogin ? 'Welcome Back' : 'Join PeerFact'}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="glass-button p-2 hover:bg-red-500/10"
+          >
+            <XMarkIcon className="h-5 w-5 text-gray-500 hover:text-red-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 pb-6">
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {isLogin 
+              ? 'Sign in to your account to continue fact-checking' 
+              : 'Create an account to start contributing to the community'
+            }
+          </p>
+
+          {/* Tab Switcher */}
+          <div className="glass rounded-lg p-1 mb-6 flex">
             <button
-              onClick={onClose}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+              onClick={() => setIsLogin(true)}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
+                isLogin 
+                  ? 'bg-white/20 text-gray-900 dark:text-white shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
             >
-              <XMarkIcon className="w-5 h-5" />
+              Sign In
+            </button>
+            <button
+              onClick={() => setIsLogin(false)}
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
+                !isLogin 
+                  ? 'bg-white/20 text-gray-900 dark:text-white shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Sign Up
             </button>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm">
-                {error}
+            {/* Username - Only for registration */}
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Username
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <UserIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleInputChange}
+                    placeholder="Enter your username"
+                    className={`glass-input pl-10 ${errors.username ? 'border-red-500' : ''}`}
+                  />
+                </div>
+                {errors.username && (
+                  <p className="mt-1 text-sm text-red-500">{errors.username}</p>
+                )}
               </div>
             )}
 
-            {!isLogin && (
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email
+              </label>
               <div className="relative">
-                <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <EnvelopeIcon className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
-                  type="text"
-                  name="username"
-                  placeholder="Username"
-                  value={formData.username}
+                  type="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 glass rounded-xl border border-white/20 dark:border-white/10 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-400"
-                  required
+                  placeholder="Enter your email"
+                  className={`glass-input pl-10 ${errors.email ? 'border-red-500' : ''}`}
                 />
               </div>
-            )}
-
-            <div className="relative">
-              <EnvelopeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="email"
-                name="email"
-                placeholder="Email address"
-                value={formData.email}
-                onChange={handleInputChange}
-                className="w-full pl-10 pr-4 py-3 glass rounded-xl border border-white/20 dark:border-white/10 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-400"
-                required
-              />
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+              )}
             </div>
 
-            <div className="relative">
-              <LockClosedIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className="w-full pl-10 pr-12 py-3 glass rounded-xl border border-white/20 dark:border-white/10 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-400"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="w-5 h-5" />
-                ) : (
-                  <EyeIcon className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-
-            {!isLogin && (
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Password
+              </label>
               <div className="relative">
-                <LockClosedIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <LockClosedIcon className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  name="confirmPassword"
-                  placeholder="Confirm password"
-                  value={formData.confirmPassword}
+                  name="password"
+                  value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 glass rounded-xl border border-white/20 dark:border-white/10 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-400"
-                  required
+                  placeholder="Enter your password"
+                  className={`glass-input pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <EyeIcon className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-500">{errors.password}</p>
+              )}
+              {!isLogin && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Password must be at least 6 characters with letters and numbers
+                </p>
+              )}
+            </div>
+
+            {/* Error Message */}
+            {errors.general && (
+              <div className="glass rounded-lg p-3 border border-red-500/30 bg-red-500/10">
+                <p className="text-red-500 text-sm">{errors.general}</p>
               </div>
             )}
 
+            {/* Success Message */}
+            {success && (
+              <div className="glass rounded-lg p-3 border border-green-500/30 bg-green-500/10">
+                <p className="text-green-500 text-sm">{success}</p>
+              </div>
+            )}
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-gradient text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              className="w-full glass-button gradient-primary text-white py-3 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <>
-                  <div className="spinner"></div>
-                  <span>{isLogin ? 'Signing in...' : 'Creating account...'}</span>
-                </>
+                <div className="flex items-center justify-center">
+                  <LoadingSpinner size="sm" />
+                  <span className="ml-2">
+                    {isLogin ? 'Signing In...' : 'Creating Account...'}
+                  </span>
+                </div>
               ) : (
-                <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
+                isLogin ? 'Sign In' : 'Create Account'
               )}
             </button>
           </form>
 
           {/* Footer */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-600 dark:text-gray-400">
+          <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+            <p>
               {isLogin ? "Don't have an account? " : "Already have an account? "}
               <button
                 onClick={() => {
                   setIsLogin(!isLogin);
-                  setError('');
-                  setFormData({ username: '', email: '', password: '', confirmPassword: '' });
+                  setFormData({ username: '', email: '', password: '' });
+                  setErrors({});
+                  setSuccess('');
                 }}
-                className="text-blue-500 hover:text-blue-600 font-medium"
+                className="text-blue-500 hover:text-blue-400 font-medium"
               >
                 {isLogin ? 'Sign up' : 'Sign in'}
               </button>
             </p>
-
-            {isLogin && (
-              <div className="mt-4 pt-4 border-t border-white/10">
-                <p className="text-xs text-gray-500">
-                  By signing in, you agree to our{' '}
-                  <a href="#" className="text-blue-500 hover:text-blue-600">Terms of Service</a>
-                  {' '}and{' '}
-                  <a href="#" className="text-blue-500 hover:text-blue-600">Privacy Policy</a>
-                </p>
-              </div>
-            )}
           </div>
+
+          {/* Terms */}
+          {!isLogin && (
+            <p className="mt-4 text-xs text-center text-gray-500">
+              By creating an account, you agree to our Terms of Service and Privacy Policy
+            </p>
+          )}
         </div>
       </div>
     </div>
