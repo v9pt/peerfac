@@ -1,186 +1,140 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import axios from 'axios';
-import './App.css';
-
-// Import Contexts
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-
-// Import Pages
-import HomePage from './pages/HomePage';
-import ExplorePage from './pages/ExplorePage';
-import LeaderboardPage from './pages/LeaderboardPage';
-import ProfilePage from './pages/ProfilePage';
-import CreateClaimPage from './pages/CreateClaimPage';
-import ClaimDetailPage from './pages/ClaimDetailPage';
-import SettingsPage from './pages/SettingsPage';
-import AboutPage from './pages/AboutPage';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-
-// Import Components
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Dashboard from './components/Dashboard';
+import ClaimDetail from './components/ClaimDetail';
+import CreateClaim from './components/CreateClaim';
+import Analytics from './components/Analytics';
+import Leaderboard from './components/Leaderboard';
+import Profile from './components/Profile';
+import Settings from './components/Settings';
+import AuthModal from './components/AuthModal';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
-import LoadingSpinner from './components/LoadingSpinner';
-import ProtectedRoute from './components/ProtectedRoute';
+import ThemeProvider from './components/ThemeProvider';
+import RealtimeProvider from './components/RealtimeProvider';
+import './App.css';
 
-// Context
-const AppContext = createContext();
-export const useApp = () => useContext(AppContext);
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-// Inner App component that uses Auth context
-function AppContent() {
-  const { user, loading: authLoading, loginAsAnonymous, isAuthenticated } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [claims, setClaims] = useState([]);
-  const [theme, setTheme] = useState('dark');
-  const [loading, setLoading] = useState(true);
-
-  // Initialize anonymous user if no authentication
-  useEffect(() => {
-    const initializeUser = async () => {
-      if (!authLoading && !isAuthenticated && !user) {
-        try {
-          const existing = localStorage.getItem('peerfact_user');
-          if (existing) {
-            // User has an existing anonymous session but no auth token
-            const userData = JSON.parse(existing);
-            if (userData.is_anonymous) {
-              // Keep the anonymous user data
-            }
-          } else {
-            // Create new anonymous user if none exists
-            await loginAsAnonymous();
-          }
-        } catch (error) {
-          console.error('Failed to initialize user:', error);
-        }
-      }
-      setLoading(false);
-    };
-
-    if (!authLoading) {
-      initializeUser();
-    }
-  }, [authLoading, isAuthenticated, user, loginAsAnonymous]);
-
-  // Fetch claims
-  const fetchClaims = async () => {
-    try {
-      const response = await axios.get(`${API}/claims`);
-      setClaims(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch claims:', error);
-    }
-  };
-
-  useEffect(() => {
-    if ((user || isAuthenticated) && !authLoading) {
-      fetchClaims();
-    }
-  }, [user, isAuthenticated, authLoading]);
-
-  const contextValue = {
-    user,
-    setUser,
-    claims,
-    setClaims,
-    fetchClaims,
-    API,
-    theme,
-    setTheme,
-    sidebarOpen,
-    setSidebarOpen,
-  };
-
-  if (loading || authLoading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  return (
-    <AppContext.Provider value={contextValue}>
-      <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-200`}>
-          <Navbar />
-          
-          <div className="flex">
-            <Sidebar />
-            
-            <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'} pt-16`}>
-              <div className="container mx-auto px-4 py-6 max-w-7xl">
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/register" element={<RegisterPage />} />
-                  
-                  {/* Protected routes - accessible with or without auth */}
-                  <Route path="/" element={
-                    <ProtectedRoute>
-                      <HomePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/explore" element={
-                    <ProtectedRoute>
-                      <ExplorePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/leaderboard" element={
-                    <ProtectedRoute>
-                      <LeaderboardPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/profile/:userId?" element={
-                    <ProtectedRoute>
-                      <ProfilePage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/create" element={
-                    <ProtectedRoute>
-                      <CreateClaimPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/claim/:claimId" element={
-                    <ProtectedRoute>
-                      <ClaimDetailPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/settings" element={
-                    <ProtectedRoute>
-                      <SettingsPage />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/about" element={
-                    <ProtectedRoute>
-                      <AboutPage />
-                    </ProtectedRoute>
-                  } />
-                  
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </div>
-            </main>
-          </div>
-        </div>
-    </AppContext.Provider>
-  );
-}
-
-}
-
-// Main App component with Auth Provider
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    // Check for existing authentication
+    const token = localStorage.getItem('authToken');
+    const user = localStorage.getItem('currentUser');
+    
+    if (token && user) {
+      setIsAuthenticated(true);
+      setCurrentUser(JSON.parse(user));
+    }
+  }, []);
+
+  const handleLogin = (user, token) => {
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    setShowAuthModal(false);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+  };
+
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <ThemeProvider>
+      <RealtimeProvider>
+        <Router>
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900 transition-all duration-500">
+            {/* Background Pattern */}
+            <div className="fixed inset-0 opacity-30">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1),transparent_70%)]"></div>
+              <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_24%,rgba(59,130,246,0.05)_25%,rgba(59,130,246,0.05)_26%,transparent_27%,transparent_74%,rgba(59,130,246,0.05)_75%,rgba(59,130,246,0.05)_76%,transparent_77%),linear-gradient(-45deg,transparent_24%,rgba(59,130,246,0.05)_25%,rgba(59,130,246,0.05)_26%,transparent_27%,transparent_74%,rgba(59,130,246,0.05)_75%,rgba(59,130,246,0.05)_76%,transparent_77%)] bg-[length:20px_20px]"></div>
+            </div>
+
+            <Navbar 
+              isAuthenticated={isAuthenticated}
+              currentUser={currentUser}
+              onLogin={() => setShowAuthModal(true)}
+              onLogout={handleLogout}
+              onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            />
+
+            <div className="flex relative">
+              <Sidebar 
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
+                isAuthenticated={isAuthenticated}
+                currentUser={currentUser}
+              />
+
+              <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : ''}`}>
+                <div className="relative z-10">
+                  <Routes>
+                    <Route path="/" element={
+                      <Dashboard 
+                        isAuthenticated={isAuthenticated}
+                        currentUser={currentUser}
+                        onLogin={() => setShowAuthModal(true)}
+                      />
+                    } />
+                    <Route path="/claim/:id" element={
+                      <ClaimDetail 
+                        isAuthenticated={isAuthenticated}
+                        currentUser={currentUser}
+                        onLogin={() => setShowAuthModal(true)}
+                      />
+                    } />
+                    <Route path="/create" element={
+                      <CreateClaim 
+                        isAuthenticated={isAuthenticated}
+                        currentUser={currentUser}
+                        onLogin={() => setShowAuthModal(true)}
+                      />
+                    } />
+                    <Route path="/analytics" element={
+                      <Analytics 
+                        isAuthenticated={isAuthenticated}
+                        currentUser={currentUser}
+                      />
+                    } />
+                    <Route path="/leaderboard" element={
+                      <Leaderboard />
+                    } />
+                    <Route path="/profile" element={
+                      <Profile 
+                        isAuthenticated={isAuthenticated}
+                        currentUser={currentUser}
+                        onLogin={() => setShowAuthModal(true)}
+                      />
+                    } />
+                    <Route path="/settings" element={
+                      <Settings 
+                        isAuthenticated={isAuthenticated}
+                        currentUser={currentUser}
+                        onLogin={() => setShowAuthModal(true)}
+                      />
+                    } />
+                  </Routes>
+                </div>
+              </main>
+            </div>
+
+            {showAuthModal && (
+              <AuthModal
+                onClose={() => setShowAuthModal(false)}
+                onLogin={handleLogin}
+              />
+            )}
+          </div>
+        </Router>
+      </RealtimeProvider>
+    </ThemeProvider>
   );
 }
 
