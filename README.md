@@ -42,7 +42,19 @@ scripts\start-windows.bat
 - Python 3.8+
 - Docker (for MongoDB)
 
-**Install & Run:**
+**Quick Setup:**
+```bash
+# One-command setup
+./setup-dev.sh
+
+# Start all services
+./start-dev.sh
+
+# Validate setup
+./validate-setup.sh
+```
+
+**Manual Setup:**
 ```bash
 # Start MongoDB
 docker-compose up -d mongodb
