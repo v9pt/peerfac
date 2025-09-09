@@ -10,7 +10,7 @@ import sys
 import os
 
 # Get backend URL from environment
-BACKEND_URL = "https://factpeer.preview.emergentagent.com/api"
+BACKEND_URL = "https://env-validator.preview.emergentagent.com/api"
 
 class OpenAITester:
     def __init__(self):
