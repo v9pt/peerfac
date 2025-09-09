@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  DocumentTextIcon,
-  LinkIcon,
+import { 
+  PlusIcon, 
+  LinkIcon, 
   PhotoIcon,
+  DocumentTextIcon,
   SparklesIcon,
   ExclamationTriangleIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
+import LoadingSpinner from './LoadingSpinner';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8001';
 
@@ -16,26 +19,85 @@ export default function CreateClaim({ isAuthenticated, currentUser, onLogin }) {
   const [formData, setFormData] = useState({
     text: '',
     link: '',
-    tags: []
+    media_base64: null
   });
-  const [loading, setLoading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [dragActive, setDragActive] = useState(false);
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    if (error) setError('');
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear analysis when text changes
+    if (name === 'text') {
+      setAnalysisResult(null);
+    }
   };
 
-  const analyzeWithAI = async () => {
-    if (!formData.text.trim()) return;
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File size must be less than 5MB');
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setError('Only image files are supported');
+      return;
+    }
+
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFormData(prev => ({
+          ...prev,
+          media_base64: e.target.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setError('Failed to upload file');
+    }
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
     
-    setAnalyzing(true);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!formData.text.trim()) {
+      setError('Please enter some text to analyze');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError('');
+
     try {
       const response = await fetch(`${BACKEND_URL}/api/analyze/claim`, {
         method: 'POST',
@@ -48,14 +110,17 @@ export default function CreateClaim({ isAuthenticated, currentUser, onLogin }) {
         }),
       });
 
-      if (response.ok) {
-        const analysis = await response.json();
-        setAiAnalysis(analysis);
+      if (!response.ok) {
+        throw new Error('Analysis failed');
       }
-    } catch (error) {
-      console.error('AI analysis failed:', error);
+
+      const result = await response.json();
+      setAnalysisResult(result);
+    } catch (err) {
+      console.error('Analysis error:', err);
+      setError('AI analysis failed. You can still submit your claim.');
     } finally {
-      setAnalyzing(false);
+      setIsAnalyzing(false);
     }
   };
 
@@ -67,7 +132,12 @@ export default function CreateClaim({ isAuthenticated, currentUser, onLogin }) {
       return;
     }
 
-    setLoading(true);
+    if (!formData.text.trim()) {
+      setError('Please enter a claim to submit');
+      return;
+    }
+
+    setIsSubmitting(true);
     setError('');
 
     try {
@@ -76,248 +146,285 @@ export default function CreateClaim({ isAuthenticated, currentUser, onLogin }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` })
+          'Authorization': token ? `Bearer ${token}` : undefined,
         },
         body: JSON.stringify({
           author_id: currentUser?.id || 'anonymous',
-          text: formData.text.trim(),
-          link: formData.link.trim() || null,
-          tags: formData.tags
+          text: formData.text,
+          link: formData.link || null,
+          media_base64: formData.media_base64
         }),
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || 'Failed to create claim');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to create claim');
       }
 
       const newClaim = await response.json();
-      setSuccess(true);
+      setSuccess('Claim created successfully!');
       
-      // Redirect to the new claim after a short delay
+      // Reset form
+      setFormData({ text: '', link: '', media_base64: null });
+      setAnalysisResult(null);
+      
+      // Navigate to the new claim
       setTimeout(() => {
         navigate(`/claim/${newClaim.id}`);
-      }, 2000);
+      }, 1500);
 
-    } catch (error) {
-      setError(error.message);
+    } catch (err) {
+      console.error('Submit error:', err);
+      setError(err.message || 'Failed to create claim');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (success) {
-    return (
-      <div className="min-h-screen p-4 flex items-center justify-center">
-        <div className="max-w-md text-center">
-          <div className="glass-strong rounded-2xl p-8 border border-white/20 dark:border-white/10">
-            <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Claim Created Successfully!
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Your claim has been submitted and is ready for community verification.
-            </p>
-            <div className="spinner mx-auto"></div>
-            <p className="text-sm text-gray-500 mt-2">Redirecting...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const removeImage = () => {
+    setFormData(prev => ({ ...prev, media_base64: null }));
+  };
 
   return (
-    <div className="min-h-screen p-4 lg:p-6">
+    <div className="min-h-screen pt-20 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-            Submit New Claim
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Share a claim that needs fact-checking by the community
+        <div className="text-center mb-8">
+          <h1 className="heading-primary">Create New Claim</h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            Share a claim that needs fact-checking. Our AI will analyze it, and the community can verify it.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Form */}
           <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="glass rounded-xl p-6 border border-white/20 dark:border-white/10">
-                {error && (
-                  <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm">
-                    {error}
-                  </div>
-                )}
-
-                {/* Claim Text */}
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    <DocumentTextIcon className="w-4 h-4" />
-                    <span>Claim Text *</span>
+            <div className="glass-card">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Text Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <DocumentTextIcon className="h-4 w-4 inline mr-2" />
+                    Claim Text *
                   </label>
                   <textarea
                     name="text"
                     value={formData.text}
                     onChange={handleInputChange}
-                    placeholder="Enter the claim you want fact-checked..."
-                    rows={4}
-                    className="w-full px-4 py-3 glass rounded-xl border border-white/20 dark:border-white/10 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-400 resize-none"
+                    placeholder="Enter the claim you want fact-checked... (e.g., 'Scientists have discovered a new planet in our solar system')"
+                    className="glass-textarea"
+                    rows={6}
                     required
                   />
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-500">
-                      {formData.text.length}/500 characters
-                    </p>
-                    <button
-                      type="button"
-                      onClick={analyzeWithAI}
-                      disabled={analyzing || !formData.text.trim()}
-                      className="flex items-center space-x-2 px-3 py-1 text-sm bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-500/20 transition-colors disabled:opacity-50"
-                    >
-                      <SparklesIcon className="w-4 h-4" />
-                      <span>{analyzing ? 'Analyzing...' : 'AI Preview'}</span>
-                    </button>
-                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formData.text.length}/1000 characters
+                  </p>
                 </div>
 
-                {/* Source Link */}
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                    <LinkIcon className="w-4 h-4" />
-                    <span>Source Link (Optional)</span>
+                {/* Link Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <LinkIcon className="h-4 w-4 inline mr-2" />
+                    Source Link (Optional)
                   </label>
                   <input
                     type="url"
                     name="link"
                     value={formData.link}
                     onChange={handleInputChange}
-                    placeholder="https://example.com/source"
-                    className="w-full px-4 py-3 glass rounded-xl border border-white/20 dark:border-white/10 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-400"
+                    placeholder="https://example.com/article"
+                    className="glass-input"
                   />
                 </div>
 
-                {/* Submit Button */}
-                <div className="pt-4">
+                {/* File Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <PhotoIcon className="h-4 w-4 inline mr-2" />
+                    Image Evidence (Optional)
+                  </label>
+                  
+                  {!formData.media_base64 ? (
+                    <div
+                      className={`glass border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300 ${
+                        dragActive 
+                          ? 'border-blue-500 bg-blue-500/10' 
+                          : 'border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                      }`}
+                      onDragEnter={handleDrag}
+                      onDragLeave={handleDrag}
+                      onDragOver={handleDrag}
+                      onDrop={handleDrop}
+                      onClick={() => document.getElementById('file-upload').click()}
+                    >
+                      <PhotoIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                      <p className="text-gray-600 dark:text-gray-400 mb-2">
+                        Drag and drop an image, or <span className="text-blue-500">click to browse</span>
+                      </p>
+                      <p className="text-sm text-gray-500">PNG, JPG up to 5MB</p>
+                      <input
+                        id="file-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileUpload(e.target.files[0])}
+                        className="hidden"
+                      />
+                    </div>
+                  ) : (
+                    <div className="glass rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-green-600 dark:text-green-400">
+                          ✅ Image uploaded successfully
+                        </span>
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="text-red-500 hover:text-red-400"
+                        >
+                          <XMarkIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <img
+                        src={formData.media_base64}
+                        alt="Uploaded evidence"
+                        className="w-full h-40 object-cover rounded-lg"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button
+                    type="button"
+                    onClick={handleAnalyze}
+                    disabled={!formData.text.trim() || isAnalyzing}
+                    className="glass-button flex items-center justify-center space-x-2 gradient-secondary text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isAnalyzing ? (
+                      <LoadingSpinner size="sm" />
+                    ) : (
+                      <SparklesIcon className="h-4 w-4" />
+                    )}
+                    <span>{isAnalyzing ? 'Analyzing...' : 'AI Analysis'}</span>
+                  </button>
+
                   <button
                     type="submit"
-                    disabled={loading || !formData.text.trim()}
-                    className="w-full btn-gradient text-white py-3 rounded-xl font-medium hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                    disabled={!formData.text.trim() || isSubmitting}
+                    className="glass-button flex items-center justify-center space-x-2 gradient-primary text-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? (
-                      <>
-                        <div className="spinner"></div>
-                        <span>Creating Claim...</span>
-                      </>
+                    {isSubmitting ? (
+                      <LoadingSpinner size="sm" />
                     ) : (
-                      <span>Submit for Fact-Checking</span>
+                      <PlusIcon className="h-4 w-4" />
                     )}
+                    <span>{isSubmitting ? 'Creating...' : 'Create Claim'}</span>
                   </button>
                 </div>
-              </div>
-            </form>
+
+                {/* Status Messages */}
+                {error && (
+                  <div className="glass rounded-lg p-4 border border-red-500/30 bg-red-500/10">
+                    <div className="flex items-center space-x-2 text-red-400">
+                      <ExclamationTriangleIcon className="h-5 w-5" />
+                      <span>{error}</span>
+                    </div>
+                  </div>
+                )}
+
+                {success && (
+                  <div className="glass rounded-lg p-4 border border-green-500/30 bg-green-500/10">
+                    <div className="flex items-center space-x-2 text-green-400">
+                      <CheckCircleIcon className="h-5 w-5" />
+                      <span>{success}</span>
+                    </div>
+                  </div>
+                )}
+              </form>
+            </div>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* AI Analysis Preview */}
-            {aiAnalysis && (
-              <div className="glass rounded-xl p-4 border border-white/20 dark:border-white/10">
-                <h3 className="font-semibold mb-3 flex items-center space-x-2">
-                  <SparklesIcon className="w-5 h-5 text-purple-500" />
-                  <span>AI Analysis Preview</span>
+            {/* AI Analysis Results */}
+            {analysisResult && (
+              <div className="glass-card border border-blue-500/30">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+                  <SparklesIcon className="h-5 w-5 mr-2 text-blue-500" />
+                  AI Analysis
                 </h3>
                 
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Summary:</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {aiAnalysis.summary}
+                <div className="space-y-4">
+                  <div className="p-3 glass rounded-lg">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Classification:
                     </p>
-                  </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Initial Classification:</p>
-                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${
-                      aiAnalysis.label.includes('True') ? 'bg-green-500/20 text-green-600 dark:text-green-400' :
-                      aiAnalysis.label.includes('False') ? 'bg-red-500/20 text-red-600 dark:text-red-400' :
-                      'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
+                    <span className={`status-badge ${
+                      analysisResult.label?.toLowerCase().includes('true') ? 'status-true' :
+                      analysisResult.label?.toLowerCase().includes('false') ? 'status-false' :
+                      'status-unclear'
                     }`}>
-                      {aiAnalysis.label}
+                      {analysisResult.label}
                     </span>
                   </div>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Confidence:</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                        <div 
-                          className="bg-blue-500 h-2 rounded-full"
-                          style={{ width: `${(aiAnalysis.confidence || 0) * 100}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {Math.round((aiAnalysis.confidence || 0) * 100)}%
-                      </span>
+
+                  {analysisResult.summary && (
+                    <div className="p-3 glass rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Summary:
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {analysisResult.summary}
+                      </p>
                     </div>
-                  </div>
+                  )}
+
+                  {analysisResult.confidence && (
+                    <div className="p-3 glass rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Confidence:
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-300"
+                            style={{ width: `${(analysisResult.confidence * 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium">
+                          {Math.round(analysisResult.confidence * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Guidelines */}
-            <div className="glass rounded-xl p-4 border border-white/20 dark:border-white/10">
-              <h3 className="font-semibold mb-3 flex items-center space-x-2">
-                <ExclamationTriangleIcon className="w-5 h-5 text-orange-500" />
-                <span>Submission Guidelines</span>
+            {/* Tips */}
+            <div className="glass-card">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                💡 Tips for Better Claims
               </h3>
-              
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+              <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
                 <li className="flex items-start space-x-2">
-                  <span className="text-green-500 font-bold">✓</span>
-                  <span>Be specific and factual</span>
+                  <span className="text-blue-500 font-bold">•</span>
+                  <span>Be specific and clear in your claim</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <span className="text-green-500 font-bold">✓</span>
-                  <span>Include source links when possible</span>
+                  <span className="text-blue-500 font-bold">•</span>
+                  <span>Include reliable source links when possible</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <span className="text-green-500 font-bold">✓</span>
-                  <span>Use clear, unbiased language</span>
+                  <span className="text-blue-500 font-bold">•</span>
+                  <span>Add visual evidence if available</span>
                 </li>
                 <li className="flex items-start space-x-2">
-                  <span className="text-red-500 font-bold">✗</span>
-                  <span>No personal opinions or attacks</span>
-                </li>
-                <li className="flex items-start space-x-2">
-                  <span className="text-red-500 font-bold">✗</span>
-                  <span>No spam or duplicate content</span>
+                  <span className="text-blue-500 font-bold">•</span>
+                  <span>Use AI analysis to get initial insights</span>
                 </li>
               </ul>
-            </div>
-
-            {/* Statistics */}
-            <div className="glass rounded-xl p-4 border border-white/20 dark:border-white/10">
-              <h3 className="font-semibold mb-3">Platform Stats</h3>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Claims Today</span>
-                  <span className="text-sm font-medium">12</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Verified Claims</span>
-                  <span className="text-sm font-medium">8</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Active Verifiers</span>
-                  <span className="text-sm font-medium">25</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Avg. Response Time</span>
-                  <span className="text-sm font-medium">2.3 hours</span>
-                </div>
-              </div>
             </div>
           </div>
         </div>

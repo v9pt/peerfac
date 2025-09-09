@@ -1,206 +1,239 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  ArrowUpIcon, 
-  ArrowDownIcon, 
+  HeartIcon, 
   ChatBubbleLeftIcon, 
   ShareIcon,
-  EyeIcon,
   ClockIcon,
-  CheckCircleIcon,
+  UserIcon,
+  LinkIcon,
+  CheckBadgeIcon,
   XCircleIcon,
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon,
+  EyeIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
-import { useApp } from '../App';
+import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
 
-const ClaimCard = ({ claim, onVote, showActions = true }) => {
-  const { theme } = useApp();
-  const [isVoting, setIsVoting] = useState(false);
+export default function ClaimCard({ claim, isAuthenticated, onLogin, onLike, onShare }) {
+  const [isLiked, setIsLiked] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const getVerificationIcon = (label) => {
-    if (!label) return <QuestionMarkCircleIcon className="w-5 h-5 text-gray-500" />;
+  const handleLike = () => {
+    if (!isAuthenticated) {
+      onLogin();
+      return;
+    }
+    setIsLiked(!isLiked);
+    onLike?.(claim.id);
+  };
+
+  const handleShare = () => {
+    onShare?.(claim);
+  };
+
+  const getStatusIcon = (label) => {
+    switch (label?.toLowerCase()) {
+      case 'mostly true':
+      case 'likely true':
+        return <CheckBadgeIcon className="h-5 w-5 text-green-400" />;
+      case 'mostly false':
+      case 'likely false':
+        return <XCircleIcon className="h-5 w-5 text-red-400" />;
+      default:
+        return <QuestionMarkCircleIcon className="h-5 w-5 text-yellow-400" />;
+    }
+  };
+
+  const getStatusColor = (label) => {
+    switch (label?.toLowerCase()) {
+      case 'mostly true':
+      case 'likely true':
+        return 'status-true';
+      case 'mostly false':
+      case 'likely false':
+        return 'status-false';
+      default:
+        return 'status-unclear';
+    }
+  };
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
     
-    if (label.toLowerCase().includes('true')) {
-      return <CheckCircleIcon className="w-5 h-5 text-green-500" />;
-    }
-    if (label.toLowerCase().includes('false')) {
-      return <XCircleIcon className="w-5 h-5 text-red-500" />;
-    }
-    return <QuestionMarkCircleIcon className="w-5 h-5 text-yellow-500" />;
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
   };
 
-  const getVerificationColor = (label) => {
-    if (!label) return 'gray';
-    if (label.toLowerCase().includes('true')) return 'green';
-    if (label.toLowerCase().includes('false')) return 'red';
-    return 'yellow';
+  const truncateText = (text, maxLength = 200) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
   };
-
-  const handleVote = async (stance) => {
-    if (isVoting || !onVote) return;
-    setIsVoting(true);
-    try {
-      await onVote(claim.id, stance);
-    } catch (error) {
-      console.error('Vote failed:', error);
-    } finally {
-      setIsVoting(false);
-    }
-  };
-
-  const totalVotes = (claim.support_count || 0) + (claim.refute_count || 0) + (claim.unclear_count || 0);
-  const confidencePercentage = Math.round((claim.confidence || 0) * 100);
 
   return (
-    <div className={`rounded-xl p-6 transition-all duration-200 hover:shadow-lg border ${
-      theme === 'dark' 
-        ? 'bg-gray-800 border-gray-700 hover:border-gray-600' 
-        : 'bg-white border-gray-200 hover:border-gray-300'
-    }`}>
+    <div className="glass-card hover-lift hover-glow group cursor-pointer">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
-          {getVerificationIcon(claim.ai_label)}
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <UserIcon className="h-5 w-5 text-white" />
+          </div>
           <div>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              getVerificationColor(claim.ai_label) === 'green' 
-                ? 'bg-green-100 text-green-800 border border-green-200' 
-                : getVerificationColor(claim.ai_label) === 'red'
-                ? 'bg-red-100 text-red-800 border border-red-200'
-                : getVerificationColor(claim.ai_label) === 'yellow'
-                ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                : 'bg-gray-100 text-gray-800 border border-gray-200'
-            }`}>
-              {claim.ai_label || 'Unverified'}
-            </span>
+            <p className="font-medium text-gray-900 dark:text-white">
+              Anonymous User
+            </p>
+            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+              <ClockIcon className="h-4 w-4" />
+              <span>{formatTimeAgo(claim.created_at)}</span>
+            </div>
           </div>
         </div>
-        
-        <div className="flex items-center space-x-4 text-sm text-gray-500">
-          <div className="flex items-center space-x-1">
-            <ClockIcon className="w-4 h-4" />
-            <span>{new Date(claim.created_at).toLocaleDateString()}</span>
+
+        {/* AI Analysis Status */}
+        {claim.ai_label && (
+          <div className={`status-badge ${getStatusColor(claim.ai_label)} flex items-center space-x-1`}>
+            {getStatusIcon(claim.ai_label)}
+            <span className="text-xs font-medium">{claim.ai_label}</span>
           </div>
-          <div className="flex items-center space-x-1">
-            <EyeIcon className="w-4 h-4" />
-            <span>{totalVotes}</span>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Content */}
-      <Link to={`/claim/${claim.id}`} className="block group">
-        <h3 className={`text-lg font-semibold mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors ${
-          theme === 'dark' ? 'text-white' : 'text-gray-900'
-        }`}>
-          {claim.ai_summary || claim.text}
-        </h3>
-        
-        {claim.text !== claim.ai_summary && claim.ai_summary && (
-          <p className={`text-sm mb-4 line-clamp-3 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
-            {claim.text}
-          </p>
-        )}
-      </Link>
+      {/* Claim Content */}
+      <div className="mb-4">
+        <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
+          {isExpanded ? claim.text : truncateText(claim.text)}
+          {claim.text.length > 200 && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-blue-500 hover:text-blue-400 ml-2 text-sm font-medium"
+            >
+              {isExpanded ? 'Show less' : 'Show more'}
+            </button>
+          )}
+        </p>
 
-      {/* Link Preview */}
-      {claim.link && (
-        <div className={`mb-4 p-3 rounded-lg border ${
-          theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-        }`}>
-          <a 
-            href={claim.link} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-blue-600 hover:text-blue-700 text-sm truncate block"
-          >
-            🔗 {claim.link}
-          </a>
-        </div>
-      )}
+        {/* Link Preview */}
+        {claim.link && (
+          <div className="mt-3 p-3 glass rounded-lg border border-white/10">
+            <div className="flex items-center space-x-2 text-sm text-blue-400">
+              <LinkIcon className="h-4 w-4" />
+              <a 
+                href={claim.link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:underline truncate"
+              >
+                {claim.link}
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* AI Summary */}
+        {claim.ai_summary && (
+          <div className="mt-3 p-3 glass rounded-lg border border-blue-500/20 bg-blue-500/5">
+            <div className="flex items-start space-x-2">
+              <div className="w-5 h-5 rounded bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs text-white font-bold">AI</span>
+              </div>
+              <div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                  {claim.ai_summary}
+                </p>
+                {claim.ai_confidence && (
+                  <div className="mt-2 flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">Confidence:</span>
+                    <div className="w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-300"
+                        style={{ width: `${(claim.ai_confidence * 100)}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {Math.round(claim.ai_confidence * 100)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Verification Stats */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-            Community Confidence: {confidencePercentage}%
-          </span>
-          <span className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-            {totalVotes} verifications
-          </span>
+      <div className="flex items-center justify-between mb-4 p-3 glass rounded-lg">
+        <div className="flex items-center space-x-4 text-sm">
+          <div className="flex items-center space-x-1 text-green-400">
+            <CheckBadgeIcon className="h-4 w-4" />
+            <span>{claim.support_count || 0}</span>
+          </div>
+          <div className="flex items-center space-x-1 text-red-400">
+            <XCircleIcon className="h-4 w-4" />
+            <span>{claim.refute_count || 0}</span>
+          </div>
+          <div className="flex items-center space-x-1 text-yellow-400">
+            <QuestionMarkCircleIcon className="h-4 w-4" />
+            <span>{claim.unclear_count || 0}</span>
+          </div>
         </div>
         
-        <div className={`w-full h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
-          <div 
-            className="h-full bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 transition-all duration-300"
-            style={{ width: `${confidencePercentage}%` }}
-          />
-        </div>
-        
-        <div className="flex justify-between mt-2 text-xs">
-          <span className="text-green-600">Support: {claim.support_count || 0}</span>
-          <span className="text-yellow-600">Unclear: {claim.unclear_count || 0}</span>
-          <span className="text-red-600">Refute: {claim.refute_count || 0}</span>
-        </div>
+        {claim.confidence !== undefined && (
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-gray-500">Confidence:</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {Math.round(claim.confidence * 100)}%
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Actions */}
-      {showActions && (
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => handleVote('support')}
-              disabled={isVoting}
-              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-green-50 text-green-600 hover:text-green-700 disabled:opacity-50"
-            >
-              <ArrowUpIcon className="w-4 h-4" />
-              <span>Support</span>
-            </button>
-            
-            <button
-              onClick={() => handleVote('refute')}
-              disabled={isVoting}
-              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-red-50 text-red-600 hover:text-red-700 disabled:opacity-50"
-            >
-              <ArrowDownIcon className="w-4 h-4" />
-              <span>Refute</span>
-            </button>
-            
-            <button
-              onClick={() => handleVote('unclear')}
-              disabled={isVoting}
-              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-yellow-50 text-yellow-600 hover:text-yellow-700 disabled:opacity-50"
-            >
-              <QuestionMarkCircleIcon className="w-4 h-4" />
-              <span>Unclear</span>
-            </button>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Link
-              to={`/claim/${claim.id}`}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                theme === 'dark' 
-                  ? 'text-gray-300 hover:bg-gray-700 hover:text-white' 
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <ChatBubbleLeftIcon className="w-4 h-4" />
-              <span>Discuss</span>
-            </Link>
-            
-            <button className={`p-1.5 rounded-lg transition-colors ${
-              theme === 'dark' 
-                ? 'text-gray-400 hover:bg-gray-700 hover:text-white' 
-                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-            }`}>
-              <ShareIcon className="w-4 h-4" />
-            </button>
-          </div>
+      {/* Action Buttons */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={handleLike}
+            className={`flex items-center space-x-2 glass-button py-2 px-3 text-sm ${
+              isLiked ? 'text-red-500' : 'text-gray-600 dark:text-gray-400'
+            }`}
+          >
+            {isLiked ? (
+              <HeartSolidIcon className="h-4 w-4" />
+            ) : (
+              <HeartIcon className="h-4 w-4" />
+            )}
+            <span>Like</span>
+          </button>
+
+          <Link
+            to={`/claim/${claim.id}`}
+            className="flex items-center space-x-2 glass-button py-2 px-3 text-sm text-gray-600 dark:text-gray-400"
+          >
+            <ChatBubbleLeftIcon className="h-4 w-4" />
+            <span>Verify</span>
+          </Link>
+
+          <button
+            onClick={handleShare}
+            className="flex items-center space-x-2 glass-button py-2 px-3 text-sm text-gray-600 dark:text-gray-400"
+          >
+            <ShareIcon className="h-4 w-4" />
+            <span>Share</span>
+          </button>
         </div>
-      )}
+
+        <Link
+          to={`/claim/${claim.id}`}
+          className="flex items-center space-x-1 text-blue-500 hover:text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform duration-300"
+        >
+          <EyeIcon className="h-4 w-4" />
+          <span>View Details</span>
+          <ChevronRightIcon className="h-3 w-3" />
+        </Link>
+      </div>
     </div>
   );
-};
-
-export default ClaimCard;
+}
