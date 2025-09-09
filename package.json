@@ -1,0 +1,35 @@
+{
+  "name": "peerfact",
+  "version": "1.0.0",
+  "description": "A Reddit-style decentralized platform for fact-checking news, claims, and media",
+  "main": "index.js",
+  "scripts": {
+    "setup": "scripts\\setup-windows.bat",
+    "start": "scripts\\start-windows.bat",
+    "stop": "scripts\\stop-windows.bat",
+    "status": "scripts\\dev-status.bat",
+    "clean": "scripts\\clean-windows.bat",
+    "test": "scripts\\test-windows.bat",
+    "dev": "scripts\\start-windows.bat",
+    "build": "cd frontend && yarn build",
+    "install:all": "cd backend && pip install -r requirements.txt && cd ../frontend && yarn install"
+  },
+  "keywords": [
+    "fact-checking",
+    "blockchain",
+    "decentralized",
+    "crowdsourcing",
+    "truth",
+    "verification"
+  ],
+  "author": "PeerFact Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/peerfact.git"
+  }
+}
