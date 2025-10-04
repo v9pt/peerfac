@@ -469,6 +469,78 @@ def clean_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
     return doc
 
 
+async def validate_media_file(file: UploadFile) -> tuple[bool, str]:
+    """Validate uploaded media file"""
+    if file.size and file.size > MAX_FILE_SIZE:
+        return False, f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
+    
+    if file.content_type not in ALLOWED_MEDIA_TYPES:
+        return False, f"Invalid file type. Allowed types: {', '.join(ALLOWED_MEDIA_TYPES)}"
+    
+    return True, "Valid file"
+
+
+async def save_media_file(file: UploadFile) -> Dict[str, Any]:
+    """Save uploaded media file and return metadata"""
+    # Generate unique filename
+    file_ext = Path(file.filename).suffix if file.filename else ""
+    media_id = str(uuid.uuid4())
+    filename = f"{media_id}{file_ext}"
+    
+    # Create file path
+    file_path = MEDIA_DIR / filename
+    
+    # Save file
+    async with aiofiles.open(file_path, 'wb') as f:
+        content = await file.read()
+        await f.write(content)
+    
+    # Generate thumbnail for images
+    thumbnail_path = None
+    if file.content_type in ALLOWED_IMAGE_TYPES:
+        try:
+            thumbnail_path = await create_thumbnail(file_path, media_id)
+        except Exception as e:
+            logging.warning(f"Failed to create thumbnail: {e}")
+    
+    # Calculate file hash for integrity
+    file_hash = hashlib.sha256(content).hexdigest()
+    
+    return {
+        "media_id": media_id,
+        "filename": filename,
+        "file_path": str(file_path),
+        "thumbnail_path": thumbnail_path,
+        "content_type": file.content_type,
+        "file_size": len(content),
+        "file_hash": file_hash
+    }
+
+
+async def create_thumbnail(image_path: Path, media_id: str) -> Optional[str]:
+    """Create thumbnail for image"""
+    try:
+        with Image.open(image_path) as img:
+            # Convert to RGB if necessary (for PNG with transparency)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+                rgb_img.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+                img = rgb_img
+            
+            # Create thumbnail
+            img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            
+            # Save thumbnail
+            thumb_filename = f"{media_id}_thumb.jpg"
+            thumb_path = MEDIA_DIR / thumb_filename
+            img.save(thumb_path, "JPEG", quality=85)
+            
+            return str(thumb_path)
+    except Exception as e:
+        logging.error(f"Thumbnail creation failed: {e}")
+        return None
+
+
 # --------------------------------------
 # Routes: Core
 # --------------------------------------
