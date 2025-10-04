@@ -1281,12 +1281,12 @@ class PeerFactTester:
     
     def run_all_tests(self):
         """Run all tests in sequence"""
-        print(f"🚀 Starting PeerFact Backend API Tests with Authentication")
+        print(f"🚀 Starting PeerFact Enhanced Backend API Tests")
         print(f"📍 Testing against: {self.base_url}")
-        print("=" * 60)
+        print("=" * 80)
         
         tests = [
-            # Authentication tests first
+            # Authentication tests first (needed for media upload)
             self.test_user_registration_valid,
             self.test_user_registration_duplicate_email,
             self.test_user_registration_duplicate_username,
@@ -1295,6 +1295,26 @@ class PeerFactTester:
             self.test_user_login_invalid,
             self.test_auth_me_endpoint,
             self.test_auth_me_no_token,
+            
+            # NEW: Media Upload System Tests
+            self.test_media_upload,
+            self.test_media_upload_anonymous,
+            self.test_media_upload_invalid_file,
+            self.test_get_media_file,
+            self.test_get_media_thumbnail,
+            self.test_get_media_not_found,
+            
+            # NEW: Enhanced Claims with Media Tests
+            self.test_create_claim_with_media_urls,
+            self.test_create_claim_with_media_base64_backward_compatibility,
+            self.test_claims_list_includes_media_info,
+            
+            # NEW: Blockchain Integration Tests
+            self.test_blockchain_status,
+            self.test_blockchain_user_integrity,
+            self.test_blockchain_claim_integrity,
+            
+            # Authenticated claim/verification tests
             self.test_create_claim_authenticated,
             self.test_create_verification_authenticated,
             
