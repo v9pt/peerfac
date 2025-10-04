@@ -31,10 +31,18 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
-app = FastAPI(title="PeerFact API", version="0.2.0")
+app = FastAPI(title="PeerFact API", version="0.3.0")
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
+
+# Media configuration
+MEDIA_DIR = Path("media")
+MEDIA_DIR.mkdir(exist_ok=True)
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+ALLOWED_VIDEO_TYPES = {"video/mp4", "video/avi", "video/mov", "video/webm"}
+ALLOWED_MEDIA_TYPES = ALLOWED_IMAGE_TYPES | ALLOWED_VIDEO_TYPES
 
 # Authentication setup
 SECRET_KEY = os.environ.get("SECRET_KEY", "peerfact-secret-key-change-in-production")
