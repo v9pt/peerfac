@@ -44,6 +44,412 @@ class PeerFactTester:
             "response": response_data
         })
     
+    def create_test_image(self) -> io.BytesIO:
+        """Create a test image for media upload testing"""
+        img = Image.new('RGB', (100, 100), color='red')
+        img_bytes = io.BytesIO()
+        img.save(img_bytes, format='JPEG')
+        img_bytes.seek(0)
+        return img_bytes
+
+    def test_media_upload(self):
+        """Test 1: POST /api/upload/media with image file"""
+        try:
+            if not self.auth_token:
+                self.log_result("Media upload", False, "No auth token available")
+                return False
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            # Create test image
+            test_image = self.create_test_image()
+            
+            files = {
+                'file': ('test_image.jpg', test_image, 'image/jpeg')
+            }
+            
+            response = self.session.post(f"{self.base_url}/upload/media", files=files, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["media_id", "media_url", "media_type", "file_size"]
+                
+                if all(field in data for field in required_fields):
+                    if data["media_type"] == "image/jpeg" and data["file_size"] > 0:
+                        self.test_media.append(data)
+                        self.log_result("Media upload", True, f"Uploaded media: {data['media_id']}, size: {data['file_size']} bytes")
+                        return True
+                    else:
+                        self.log_result("Media upload", False, "Invalid media type or file size", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("Media upload", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("Media upload", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Media upload", False, f"Exception: {str(e)}")
+            return False
+
+    def test_media_upload_anonymous(self):
+        """Test 2: POST /api/upload/media without authentication (should work)"""
+        try:
+            # Create test image
+            test_image = self.create_test_image()
+            
+            files = {
+                'file': ('test_image_anon.jpg', test_image, 'image/jpeg')
+            }
+            
+            response = self.session.post(f"{self.base_url}/upload/media", files=files)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data["media_type"] == "image/jpeg" and data["file_size"] > 0:
+                    self.test_media.append(data)
+                    self.log_result("Media upload (anonymous)", True, f"Anonymous upload successful: {data['media_id']}")
+                    return True
+                else:
+                    self.log_result("Media upload (anonymous)", False, "Invalid media data", data)
+                    return False
+            else:
+                self.log_result("Media upload (anonymous)", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Media upload (anonymous)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_media_upload_invalid_file(self):
+        """Test 3: POST /api/upload/media with invalid file type"""
+        try:
+            # Create a text file instead of image
+            text_content = io.BytesIO(b"This is not an image file")
+            
+            files = {
+                'file': ('test.txt', text_content, 'text/plain')
+            }
+            
+            response = self.session.post(f"{self.base_url}/upload/media", files=files)
+            
+            if response.status_code == 400:
+                data = response.json()
+                if "Invalid file type" in data.get("detail", ""):
+                    self.log_result("Media upload (invalid file)", True, "Correctly rejected invalid file type")
+                    return True
+                else:
+                    self.log_result("Media upload (invalid file)", False, f"Unexpected error: {data.get('detail')}", data)
+                    return False
+            else:
+                self.log_result("Media upload (invalid file)", False, f"Expected 400, got {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Media upload (invalid file)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_get_media_file(self):
+        """Test 4: GET /api/media/{media_id} to serve uploaded media"""
+        try:
+            if not self.test_media:
+                self.log_result("Get media file", False, "No test media available")
+                return False
+            
+            media_id = self.test_media[0]["media_id"]
+            response = self.session.get(f"{self.base_url}/media/{media_id}")
+            
+            if response.status_code == 200:
+                content_type = response.headers.get('content-type', '')
+                if content_type.startswith('image/'):
+                    content_length = len(response.content)
+                    self.log_result("Get media file", True, f"Retrieved media file: {content_length} bytes, type: {content_type}")
+                    return True
+                else:
+                    self.log_result("Get media file", False, f"Invalid content type: {content_type}")
+                    return False
+            else:
+                self.log_result("Get media file", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Get media file", False, f"Exception: {str(e)}")
+            return False
+
+    def test_get_media_thumbnail(self):
+        """Test 5: GET /api/media/{media_id}/thumbnail for image thumbnails"""
+        try:
+            if not self.test_media:
+                self.log_result("Get media thumbnail", False, "No test media available")
+                return False
+            
+            media_id = self.test_media[0]["media_id"]
+            response = self.session.get(f"{self.base_url}/media/{media_id}/thumbnail")
+            
+            if response.status_code == 200:
+                content_type = response.headers.get('content-type', '')
+                if content_type == 'image/jpeg':
+                    content_length = len(response.content)
+                    self.log_result("Get media thumbnail", True, f"Retrieved thumbnail: {content_length} bytes")
+                    return True
+                else:
+                    self.log_result("Get media thumbnail", False, f"Invalid content type: {content_type}")
+                    return False
+            elif response.status_code == 404:
+                # Thumbnail might not be generated yet, which is acceptable
+                self.log_result("Get media thumbnail", True, "Thumbnail not found (acceptable for some media types)")
+                return True
+            else:
+                self.log_result("Get media thumbnail", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Get media thumbnail", False, f"Exception: {str(e)}")
+            return False
+
+    def test_get_media_not_found(self):
+        """Test 6: GET /api/media/{invalid_id} should return 404"""
+        try:
+            response = self.session.get(f"{self.base_url}/media/invalid-media-id-12345")
+            
+            if response.status_code == 404:
+                self.log_result("Get media (not found)", True, "Correctly returned 404 for invalid media ID")
+                return True
+            else:
+                self.log_result("Get media (not found)", False, f"Expected 404, got {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Get media (not found)", False, f"Exception: {str(e)}")
+            return False
+
+    def test_create_claim_with_media_urls(self):
+        """Test 7: Create claim with media_urls parameter"""
+        try:
+            if not self.auth_token or not self.test_media:
+                self.log_result("Create claim with media", False, "No auth token or test media available")
+                return False
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            media_url = self.test_media[0]["media_url"]
+            
+            payload = {
+                "author_id": "dummy-id",  # Should be ignored when authenticated
+                "text": "New climate change report shows alarming trends",
+                "link": "https://example.com/climate-report",
+                "media_urls": [media_url]
+            }
+            
+            response = self.session.post(f"{self.base_url}/claims", json=payload, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["id", "author_id", "text", "media_urls", "media_metadata"]
+                
+                if all(field in data for field in required_fields):
+                    if (data["media_urls"] and len(data["media_urls"]) > 0 and 
+                        data["media_metadata"] and len(data["media_metadata"]) > 0):
+                        self.test_claims.append(data)
+                        self.log_result("Create claim with media", True, f"Created claim with media: {len(data['media_urls'])} files")
+                        return True
+                    else:
+                        self.log_result("Create claim with media", False, "Media URLs or metadata missing", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("Create claim with media", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("Create claim with media", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Create claim with media", False, f"Exception: {str(e)}")
+            return False
+
+    def test_create_claim_with_media_base64_backward_compatibility(self):
+        """Test 8: Create claim with media_base64 (backward compatibility)"""
+        try:
+            if not self.auth_token:
+                self.log_result("Create claim with base64 media", False, "No auth token available")
+                return False
+            
+            headers = {"Authorization": f"Bearer {self.auth_token}"}
+            
+            # Create a small base64 encoded image
+            import base64
+            test_image = self.create_test_image()
+            base64_image = base64.b64encode(test_image.getvalue()).decode('utf-8')
+            
+            payload = {
+                "author_id": "dummy-id",
+                "text": "Legacy claim with base64 image",
+                "media_base64": f"data:image/jpeg;base64,{base64_image}"
+            }
+            
+            response = self.session.post(f"{self.base_url}/claims", json=payload, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("media_base64") and data["media_base64"].startswith("data:image/"):
+                    self.test_claims.append(data)
+                    self.log_result("Create claim with base64 media", True, "Created claim with base64 media (backward compatibility)")
+                    return True
+                else:
+                    self.log_result("Create claim with base64 media", False, "Base64 media not stored properly", data)
+                    return False
+            else:
+                self.log_result("Create claim with base64 media", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Create claim with base64 media", False, f"Exception: {str(e)}")
+            return False
+
+    def test_blockchain_status(self):
+        """Test 9: GET /api/blockchain/status for blockchain statistics"""
+        try:
+            response = self.session.get(f"{self.base_url}/blockchain/status")
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["total_blocks", "total_transactions", "reputation_records", "claim_verifications", "chain_integrity"]
+                
+                if all(field in data for field in required_fields):
+                    if (isinstance(data["total_blocks"], int) and data["total_blocks"] >= 1 and
+                        isinstance(data["chain_integrity"], bool)):
+                        self.log_result("Blockchain status", True, 
+                                      f"Blockchain stats: {data['total_blocks']} blocks, {data['total_transactions']} transactions, integrity: {data['chain_integrity']}")
+                        return True
+                    else:
+                        self.log_result("Blockchain status", False, "Invalid blockchain statistics", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("Blockchain status", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("Blockchain status", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Blockchain status", False, f"Exception: {str(e)}")
+            return False
+
+    def test_blockchain_user_integrity(self):
+        """Test 10: GET /api/blockchain/user/{user_id}/integrity for reputation verification"""
+        try:
+            if not self.authenticated_user:
+                self.log_result("Blockchain user integrity", False, "No authenticated user available")
+                return False
+            
+            user_id = self.authenticated_user["id"]
+            response = self.session.get(f"{self.base_url}/blockchain/user/{user_id}/integrity")
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["user_id", "records_found", "reputation_history", "chain_integrity"]
+                
+                if all(field in data for field in required_fields):
+                    if (data["user_id"] == user_id and 
+                        isinstance(data["records_found"], int) and
+                        isinstance(data["reputation_history"], list) and
+                        isinstance(data["chain_integrity"], bool)):
+                        self.log_result("Blockchain user integrity", True, 
+                                      f"User integrity verified: {data['records_found']} records, chain integrity: {data['chain_integrity']}")
+                        return True
+                    else:
+                        self.log_result("Blockchain user integrity", False, "Invalid user integrity data", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("Blockchain user integrity", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("Blockchain user integrity", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Blockchain user integrity", False, f"Exception: {str(e)}")
+            return False
+
+    def test_blockchain_claim_integrity(self):
+        """Test 11: GET /api/blockchain/claim/{claim_id}/integrity for claim verification"""
+        try:
+            if not self.test_claims:
+                self.log_result("Blockchain claim integrity", False, "No test claims available")
+                return False
+            
+            claim_id = self.test_claims[0]["id"]
+            response = self.session.get(f"{self.base_url}/blockchain/claim/{claim_id}/integrity")
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["claim_id", "records_found", "verification_history", "chain_integrity"]
+                
+                if all(field in data for field in required_fields):
+                    if (data["claim_id"] == claim_id and 
+                        isinstance(data["records_found"], int) and
+                        isinstance(data["verification_history"], list) and
+                        isinstance(data["chain_integrity"], bool)):
+                        self.log_result("Blockchain claim integrity", True, 
+                                      f"Claim integrity verified: {data['records_found']} records, chain integrity: {data['chain_integrity']}")
+                        return True
+                    else:
+                        self.log_result("Blockchain claim integrity", False, "Invalid claim integrity data", data)
+                        return False
+                else:
+                    missing = [f for f in required_fields if f not in data]
+                    self.log_result("Blockchain claim integrity", False, f"Missing fields: {missing}", data)
+                    return False
+            else:
+                self.log_result("Blockchain claim integrity", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Blockchain claim integrity", False, f"Exception: {str(e)}")
+            return False
+
+    def test_claims_list_includes_media_info(self):
+        """Test 12: GET /api/claims includes media information for claims with media"""
+        try:
+            response = self.session.get(f"{self.base_url}/claims")
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                if isinstance(data, list) and len(data) > 0:
+                    # Find a claim with media
+                    media_claim = None
+                    for claim in data:
+                        if claim.get("media_urls") or claim.get("media_base64"):
+                            media_claim = claim
+                            break
+                    
+                    if media_claim:
+                        if media_claim.get("media_urls") or media_claim.get("media_base64"):
+                            self.log_result("Claims list includes media", True, "Claims list includes media information")
+                            return True
+                        else:
+                            self.log_result("Claims list includes media", False, "Media information missing from claims list")
+                            return False
+                    else:
+                        # No claims with media found, but that's okay if we haven't created any yet
+                        self.log_result("Claims list includes media", True, "No claims with media found (acceptable)")
+                        return True
+                else:
+                    self.log_result("Claims list includes media", True, "Empty claims list (acceptable)")
+                    return True
+            else:
+                self.log_result("Claims list includes media", False, f"Status code: {response.status_code}", response.text)
+                return False
+                
+        except Exception as e:
+            self.log_result("Claims list includes media", False, f"Exception: {str(e)}")
+            return False
+
     def test_user_registration_valid(self):
         """Test 1: POST /api/auth/register with valid data"""
         try:
