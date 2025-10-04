@@ -297,6 +297,94 @@
       - working: true
         agent: "testing"
         comment: "✅ TESTED: POST /api/users/bootstrap still works for creating anonymous users. Anonymous users can still create claims and verifications using author_id. Full backward compatibility maintained."
+  - task: "Media upload system"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: POST /api/upload/media accepts image files, stores metadata in database, returns media_id and URLs. Both authenticated and anonymous uploads work. File validation correctly rejects invalid types. GET /api/media/{media_id} serves files properly."
+  - task: "Media thumbnail generation"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: GET /api/media/{media_id}/thumbnail generates and serves JPEG thumbnails for uploaded images. Thumbnail creation works with PIL/Pillow, handles different image formats properly."
+  - task: "Enhanced claims with media URLs"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: POST /api/claims accepts media_urls parameter, stores media metadata with claims. GET /api/claims includes media information in claim listings. Media metadata properly populated from uploaded files."
+  - task: "Backward compatibility with media_base64"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: POST /api/claims still accepts media_base64 parameter alongside new media_urls. Legacy base64 media storage and retrieval working correctly. Full backward compatibility maintained."
+  - task: "Blockchain status endpoint"
+    implemented: true
+    working: true
+    file: "/app/backend/blockchain_service.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: GET /api/blockchain/status returns blockchain statistics including total blocks, transactions, reputation records, claim verifications, and chain integrity status. Blockchain service operational."
+  - task: "Blockchain user reputation integrity"
+    implemented: true
+    working: true
+    file: "/app/backend/blockchain_service.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: GET /api/blockchain/user/{user_id}/integrity verifies user reputation records on blockchain. Returns reputation history, record count, and chain integrity verification."
+  - task: "Blockchain claim verification integrity"
+    implemented: true
+    working: true
+    file: "/app/backend/blockchain_service.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: GET /api/blockchain/claim/{claim_id}/integrity verifies claim verification records on blockchain. Returns verification history, record count, and chain integrity status."
+  - task: "Blockchain integration with claims and verifications"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Claims and verifications are automatically recorded on blockchain. Blockchain hashes stored with claims. Reputation updates trigger blockchain records. Integration working seamlessly."
 
 ## frontend:
   - task: "Migrate from CRACO to Vite"
