@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-Backend API Testing for PeerFact MVP
-Tests all backend endpoints according to the review request
+Backend API Testing for PeerFact Enhanced Features
+Tests all backend endpoints including new media upload and blockchain features
 """
 
 import requests
 import json
 import sys
+import io
+import tempfile
 from typing import Dict, Any, Optional
+from PIL import Image
 
 # Get backend URL from environment
 import os
