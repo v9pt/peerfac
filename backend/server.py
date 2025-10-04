@@ -542,6 +542,107 @@ async def create_thumbnail(image_path: Path, media_id: str) -> Optional[str]:
 
 
 # --------------------------------------
+# Routes: Media Upload
+# --------------------------------------
+@api_router.post("/upload/media", response_model=MediaUploadResponse)
+async def upload_media(
+    file: UploadFile = File(...),
+    current_user: Optional[Dict[str, Any]] = Depends(get_current_user)
+):
+    """Upload media file (image or video) for claims"""
+    # Validate file
+    is_valid, error_msg = await validate_media_file(file)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
+    # Save file
+    try:
+        media_data = await save_media_file(file)
+        
+        # Store metadata in database
+        media_record = {
+            "id": media_data["media_id"],
+            "filename": media_data["filename"],
+            "content_type": media_data["content_type"],
+            "file_size": media_data["file_size"],
+            "file_hash": media_data["file_hash"],
+            "uploaded_by": current_user["id"] if current_user else None,
+            "uploaded_at": datetime.utcnow(),
+            "thumbnail_path": media_data.get("thumbnail_path")
+        }
+        
+        await db.media.insert_one(media_record)
+        
+        # Return response
+        media_url = f"/api/media/{media_data['media_id']}"
+        thumbnail_url = f"/api/media/{media_data['media_id']}/thumbnail" if media_data.get("thumbnail_path") else None
+        
+        return MediaUploadResponse(
+            media_id=media_data["media_id"],
+            media_url=media_url,
+            media_type=media_data["content_type"],
+            file_size=media_data["file_size"],
+            thumbnail_url=thumbnail_url
+        )
+        
+    except Exception as e:
+        logging.error(f"Media upload failed: {e}")
+        raise HTTPException(status_code=500, detail="Media upload failed")
+
+
+@api_router.get("/media/{media_id}")
+async def get_media(media_id: str):
+    """Serve media file"""
+    media_record = await db.media.find_one({"id": media_id}, {"_id": 0})
+    if not media_record:
+        raise HTTPException(status_code=404, detail="Media not found")
+    
+    file_path = MEDIA_DIR / media_record["filename"]
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Media file not found")
+    
+    async def generate():
+        async with aiofiles.open(file_path, 'rb') as f:
+            while True:
+                chunk = await f.read(8192)
+                if not chunk:
+                    break
+                yield chunk
+    
+    return StreamingResponse(
+        generate(), 
+        media_type=media_record["content_type"],
+        headers={"Content-Disposition": f"inline; filename={media_record['filename']}"}
+    )
+
+
+@api_router.get("/media/{media_id}/thumbnail")
+async def get_media_thumbnail(media_id: str):
+    """Serve media thumbnail"""
+    media_record = await db.media.find_one({"id": media_id}, {"_id": 0})
+    if not media_record or not media_record.get("thumbnail_path"):
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+    
+    thumb_path = Path(media_record["thumbnail_path"])
+    if not thumb_path.exists():
+        raise HTTPException(status_code=404, detail="Thumbnail file not found")
+    
+    async def generate():
+        async with aiofiles.open(thumb_path, 'rb') as f:
+            while True:
+                chunk = await f.read(8192)
+                if not chunk:
+                    break
+                yield chunk
+    
+    return StreamingResponse(
+        generate(), 
+        media_type="image/jpeg",
+        headers={"Content-Disposition": f"inline; filename={media_id}_thumb.jpg"}
+    )
+
+
+# --------------------------------------
 # Routes: Core
 # --------------------------------------
 @api_router.get("/")
