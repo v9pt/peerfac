@@ -473,8 +473,8 @@
 
 ## test_plan:
   current_focus:
-    - "Backend API happy paths"
-    - "Validation errors (missing author, missing claim)"
+    - "Enhanced media upload and blockchain features"
+    - "Backward compatibility testing"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
