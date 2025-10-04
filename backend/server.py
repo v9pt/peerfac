@@ -113,8 +113,17 @@ class ClaimCreate(BaseModel):
     author_id: str
     text: str
     link: Optional[str] = None
-    media_base64: Optional[str] = None  # keep base64 to avoid file storage
+    media_base64: Optional[str] = None  # backward compatibility
+    media_urls: Optional[List[str]] = None  # new file-based media
     tags: Optional[List[str]] = None
+
+
+class MediaUploadResponse(BaseModel):
+    media_id: str
+    media_url: str
+    media_type: str
+    file_size: int
+    thumbnail_url: Optional[str] = None
 
 
 class ClaimModel(BaseModel):
