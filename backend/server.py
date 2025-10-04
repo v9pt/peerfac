@@ -21,6 +21,13 @@ import mimetypes
 from PIL import Image
 import io
 import base64
+from blockchain_service import (
+    record_reputation_on_blockchain,
+    record_claim_on_blockchain,
+    get_reputation_integrity,
+    get_claim_integrity,
+    get_blockchain_status
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
