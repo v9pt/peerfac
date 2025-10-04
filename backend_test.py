@@ -10,7 +10,8 @@ import sys
 from typing import Dict, Any, Optional
 
 # Get backend URL from environment
-BACKEND_URL = "http://localhost:8001/api"
+import os
+BACKEND_URL = os.environ.get('preview_endpoint', 'http://localhost:8001') + "/api"
 
 class PeerFactTester:
     def __init__(self):
