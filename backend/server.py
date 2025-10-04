@@ -672,6 +672,27 @@ async def get_status_checks():
 
 
 # --------------------------------------
+# Routes: Blockchain Integration
+# --------------------------------------
+@api_router.get("/blockchain/status")
+async def get_blockchain_status_endpoint():
+    """Get blockchain status and statistics"""
+    return await get_blockchain_status()
+
+
+@api_router.get("/blockchain/user/{user_id}/integrity")
+async def get_user_reputation_integrity(user_id: str):
+    """Verify user reputation integrity on blockchain"""
+    return await get_reputation_integrity(user_id)
+
+
+@api_router.get("/blockchain/claim/{claim_id}/integrity")
+async def get_claim_verification_integrity(claim_id: str):
+    """Verify claim verification integrity on blockchain"""
+    return await get_claim_integrity(claim_id)
+
+
+# --------------------------------------
 # Routes: Authentication
 # --------------------------------------
 @api_router.post("/auth/register", response_model=dict)
