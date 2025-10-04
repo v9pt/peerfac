@@ -22,6 +22,7 @@ class PeerFactTester:
         self.session = requests.Session()
         self.test_users = []
         self.test_claims = []
+        self.test_media = []
         self.results = []
         self.auth_token = None
         self.authenticated_user = None
