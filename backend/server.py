@@ -132,6 +132,8 @@ class ClaimModel(BaseModel):
     text: str
     link: Optional[str] = None
     media_base64: Optional[str] = None
+    media_urls: Optional[List[str]] = None
+    media_metadata: Optional[List[Dict[str, Any]]] = None
     ai_summary: Optional[str] = None
     ai_label: Optional[str] = None
     ai_confidence: Optional[float] = None
@@ -149,6 +151,7 @@ class ClaimModel(BaseModel):
     refute_count: int = 0
     unclear_count: int = 0
     confidence: float = 0.0
+    blockchain_hash: Optional[str] = None
 
 
 class VerificationCreate(BaseModel):
