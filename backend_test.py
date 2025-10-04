@@ -1339,7 +1339,7 @@ class PeerFactTester:
             if test():
                 passed += 1
         
-        print("=" * 60)
+        print("=" * 80)
         print(f"📊 Test Results: {passed}/{total} tests passed")
         
         if passed == total:
