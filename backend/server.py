@@ -827,12 +827,29 @@ async def create_claim(body: ClaimCreate, current_user: Optional[dict] = Depends
     # Enhanced AI analysis with source URL
     ai_result = await try_ai_analyze(body.text, body.link)
 
+    # Prepare media metadata if media URLs provided
+    media_metadata = []
+    if body.media_urls:
+        for media_url in body.media_urls:
+            # Extract media_id from URL
+            media_id = media_url.split('/')[-1]
+            media_record = await db.media.find_one({"id": media_id}, {"_id": 0})
+            if media_record:
+                media_metadata.append({
+                    "media_id": media_id,
+                    "media_url": media_url,
+                    "content_type": media_record["content_type"],
+                    "file_size": media_record["file_size"]
+                })
+
     doc = {
         "id": claim_id,
         "author_id": author_id,
         "text": body.text,
         "link": body.link,
         "media_base64": body.media_base64,
+        "media_urls": body.media_urls,
+        "media_metadata": media_metadata,
         "created_at": now,
         "ai_summary": ai_result.get("summary"),
         "ai_label": ai_result.get("label"),
@@ -850,9 +867,20 @@ async def create_claim(body: ClaimCreate, current_user: Optional[dict] = Depends
         "refute_count": 0,
         "unclear_count": 0,
         "confidence": 0.0,
+        "blockchain_hash": None
     }
 
     await db.claims.insert_one(doc)
+    
+    # Record initial claim on blockchain (async, non-blocking)
+    try:
+        blockchain_hash = await record_claim_on_blockchain(claim_id, [], {"label": "Unverified", "confidence": 0.0})
+        if blockchain_hash != "error":
+            await db.claims.update_one({"id": claim_id}, {"$set": {"blockchain_hash": blockchain_hash}})
+            doc["blockchain_hash"] = blockchain_hash
+    except Exception as e:
+        logging.warning(f"Blockchain recording failed for claim {claim_id}: {e}")
+    
     return ClaimModel(**clean_doc(doc))
 
 
