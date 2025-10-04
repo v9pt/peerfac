@@ -947,6 +947,33 @@ async def add_verification(claim_id: str, body: VerificationCreate, current_user
     else:
         await db.users.update_one({"id": author_id}, {"$inc": {"reputation": -0.05}})
 
+    # Record updated reputation and claim verification on blockchain
+    try:
+        # Get updated user reputation
+        updated_user = await get_user(author_id)
+        if updated_user:
+            user_verifications = await db.verifications.count_documents({"author_id": author_id})
+            # Calculate accuracy rate (simplified)
+            accuracy_rate = 0.7  # Placeholder calculation
+            
+            await record_reputation_on_blockchain(
+                author_id, 
+                updated_user["reputation"], 
+                user_verifications, 
+                accuracy_rate
+            )
+        
+        # Record claim verification update
+        all_verifications = await db.verifications.find({"claim_id": claim_id}, {"_id": 0}).to_list(1000)
+        final_verdict = await compute_verdict(claim_id)
+        
+        blockchain_hash = await record_claim_on_blockchain(claim_id, all_verifications, final_verdict)
+        if blockchain_hash != "error":
+            await db.claims.update_one({"id": claim_id}, {"$set": {"blockchain_hash": blockchain_hash}})
+            
+    except Exception as e:
+        logging.warning(f"Blockchain recording failed for verification: {e}")
+
     return VerificationModel(**clean_doc(doc))
 
 
