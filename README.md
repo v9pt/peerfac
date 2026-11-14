@@ -87,6 +87,8 @@ npm run stop      # Stop all services
 npm run status    # Check service status
 npm run test      # Run all tests
 npm run clean     # Clean dependencies and reset
+```
+
 ## ⚙️ Environment Variables
 
 The setup scripts automatically create `.env` files, but you can customize them:
@@ -113,18 +115,17 @@ VITE_APP_NAME=PeerFact
 ```
 
 ## 🧪 Testing
-   python server.py
-   
-   # Terminal 2 - Frontend  
-   cd frontend
-   yarn dev
-   ```
 
-4. **VSCode Extensions** (Recommended):
-   - ES7+ React/Redux/React-Native snippets
-   - Tailwind CSS IntelliSense
-   - Python
-   - Prettier - Code formatter
+```bash
+npm run test
+```
+
+## 🧩 Recommended VSCode Extensions
+
+- ES7+ React/Redux/React-Native snippets
+- Tailwind CSS IntelliSense
+- Python
+- Prettier - Code formatter
 
 ## 🏗 Architecture
 
